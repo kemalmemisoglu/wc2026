@@ -189,7 +189,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a1a0a;color:#e8f5e
 
 <script>
 // ════════════════════════════════════════════════
-//  FIREBASE AYARLARI 
+//  FIREBASE AYARLARI
 // ════════════════════════════════════════════════
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyDZSlGkMUe7OEuqShJEzphmexL64YGbhTg",
@@ -277,7 +277,10 @@ const fmtTR=u=>new Date(u).toLocaleString("tr-TR",{day:"2-digit",month:"2-digit"
 const minsLeft=m=>Math.max(0,Math.round((deadline(m)-new Date())/60000));
 
 const normalizeStr = s => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-function cleanName(s){ return normalizeStr((s||"").replace(/^\[.*?\]\s*/, '').trim()); }
+function cleanName(s){ 
+  // Takım bilgisini ve emoji/boşlukları temizle
+  return normalizeStr((s||"").replace(/^\[.*?\]\s*/, '').replace('⚽ ', '').trim()); 
+}
 
 function calcPts(p,r){
   if(!r||!p)return 0;let pts=0;
@@ -430,7 +433,8 @@ function doLogin(){
 
 function doAdminLogin(){
   const key=document.getElementById("li-akey").value;
-  if(key==="wc2026admin"){
+  // Şifre burada güncellendi
+  if(key==="8389.Kemal**"){
     isAdmin=true;currentUser="__admin__";
     setCookie("wc26_admin","1");
     enterApp();
@@ -599,7 +603,7 @@ function renderPredictPage(){
 function renderScorerSlots(){
   const sl=document.getElementById("scorer-slots");if(!sl||!predictMatch)return;
   sl.innerHTML="";
-  const pool=["OG (Kendi Kalesine)", ...(SQUADS[predictMatch.home]||[]),...(SQUADS[predictMatch.away]||[])];
+  const pool=["⚽ Kendi Kalesine (OG)", ...(SQUADS[predictMatch.home]||[]),...(SQUADS[predictMatch.away]||[])];
   predData.scorers.forEach((s,i)=>{
     const wrap=document.createElement("div");wrap.style.cssText="position:relative;margin-bottom:6px";
     const row=document.createElement("div");row.style.cssText="display:flex;gap:6px";
@@ -757,7 +761,7 @@ function renderAdminEditPage(){
 function renderAdminScorerSlots(){
   const sl=document.getElementById("admin-scorer-slots");if(!sl||!adminEditMatch)return;
   sl.innerHTML="";
-  const pool=["OG (Kendi Kalesine)", ...(SQUADS[adminEditMatch.home]||[]),...(SQUADS[adminEditMatch.away]||[])];
+  const pool=["⚽ Kendi Kalesine (OG)", ...(SQUADS[adminEditMatch.home]||[]),...(SQUADS[adminEditMatch.away]||[])];
   adminEditData.scorers.forEach((s,i)=>{
     const wrap=document.createElement("div");wrap.style.cssText="position:relative;margin-bottom:6px";
     const row=document.createElement("div");row.style.cssText="display:flex;gap:6px";
