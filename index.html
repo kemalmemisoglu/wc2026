@@ -1,1145 +1,295 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>⚽ WC 2026 Predictor</title>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a1a0a;color:#e8f5e9;min-height:100vh}
-
-/* ── NAV ── */
-.nav{display:flex;justify-content:space-between;align-items:center;background:#0d200d;padding:10px 16px;border-bottom:1px solid #1e3a1e;position:sticky;top:0;z-index:100}
-.logo{font-size:17px;font-weight:800;color:#4ade80}
-.nav-btn{background:transparent;color:#aaa;border:none;border-radius:8px;padding:6px 12px;cursor:pointer;font-weight:600;font-size:13px}
-.nav-btn:hover,.nav-btn.active{background:#4ade80;color:#0a1a0a}
-
-/* ── LAYOUT ── */
-.app-layout{display:flex;min-height:calc(100vh - 48px)}
-.main-area{flex:1;min-width:0;padding:16px 12px;max-width:720px}
-.sidebar{width:220px;flex-shrink:0;padding:14px 10px;border-left:1px solid #1e3a1e;position:sticky;top:48px;height:calc(100vh - 48px);overflow-y:auto;background:#0a1a0a}
-@media(max-width:800px){.sidebar{display:none}}
-
-/* ── SCOREBOARD SIDEBAR ── */
-.sb-title{font-size:13px;font-weight:800;color:#4ade80;margin-bottom:10px;display:flex;align-items:center;gap:6px}
-.sb-row{display:flex;align-items:center;gap:6px;padding:7px 8px;border-radius:10px;margin-bottom:4px;background:#0f240f;border:1px solid #1e3a1e;transition:border-color .2s}
-.sb-row.me{border-color:#4ade80;background:#0f2e0f}
-.sb-rank{font-size:15px;width:22px;text-align:center;flex-shrink:0}
-.sb-name{font-size:12px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.sb-pts{font-size:13px;font-weight:800;color:#facc15;flex-shrink:0}
-
-/* ── PAGES ── */
-.page{display:none}.page.active{display:block}
-.center{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
-
-/* ── CARDS / FORMS ── */
-.card{background:#0f240f;border:1px solid #1e3a1e;border-radius:18px;padding:22px 16px}
-.inp{width:100%;background:#162a16;border:1px solid #2a3a2a;border-radius:10px;padding:10px 12px;color:#e8f5e9;font-size:14px;margin-bottom:10px;outline:none}
-.inp:focus{border-color:#4ade80}
-.btn{width:100%;background:#4ade80;color:#0a1a0a;border:none;border-radius:10px;padding:12px;font-weight:700;font-size:14px;cursor:pointer;margin-bottom:10px;display:block}
-.btn:disabled{opacity:.5;cursor:not-allowed}
-.btn-outline{background:transparent;color:#4ade80;border:1px solid #4ade80;border-radius:10px;padding:9px 14px;cursor:pointer;font-size:13px;font-weight:600}
-.btn-sm{padding:7px 12px;font-size:12px;border-radius:8px;border:none;cursor:pointer;font-weight:600}
-
-/* ── MATCH CARDS ── */
-.match-card{background:#0f240f;border:1px solid #1e3a1e;border-radius:14px;padding:14px;margin-bottom:10px}
-.match-card:hover{border-color:#2a5a2a}
-.badge{border-radius:5px;padding:2px 7px;font-size:11px;font-weight:600}
-.bg{background:#1e3a1e;color:#6b8f6b}.bd{background:#1e2e4e;color:#818cf8}.bl{background:#2a1010;color:#f87171}.bw{background:#2a1a00;color:#fbbf24}
-.tabs{display:flex;border-bottom:1px solid #1e3a1e;margin-bottom:8px}
-.tab{flex:1;background:transparent;border:none;border-bottom:2px solid transparent;padding:9px 0;cursor:pointer;color:#556;font-weight:600;font-size:13px}
-.tab.active{color:#4ade80;border-bottom-color:#4ade80}
-.pred-row{background:#0a1a0a;border-radius:8px;padding:8px 10px;margin-top:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px}
-
-/* ── PREDICT ── */
-.big-num{width:76px;text-align:center;background:#162a16;border:1px solid #2a5a2a;border-radius:10px;padding:12px 6px;color:#4ade80;font-size:28px;font-weight:800;outline:none}
-.dd{position:absolute;top:100%;left:0;right:0;background:#1a2e1a;border:1px solid #2a5a2a;border-radius:10px;z-index:300;max-height:180px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.7)}
-.ddi{padding:9px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #162a16}
-.ddi:hover{background:#1e3a1e}
-
-/* ── LB PAGE ── */
-.lb-row{display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:12px;border:1px solid #1e3a1e;margin-bottom:6px}
-
-/* ── MISC ── */
-.toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:#166534;color:#bbf7d0;padding:10px 20px;border-radius:12px;font-weight:600;z-index:9999;font-size:13px;max-width:90vw;text-align:center;display:none;white-space:nowrap}
-.share-box{background:#0a1e2e;border:1px solid #1e3a4e;border-radius:12px;padding:14px;margin-bottom:16px}
-.share-url{background:#0d1a2e;border:1px solid #1e3a4e;border-radius:8px;padding:8px 10px;color:#86cfef;font-size:12px;word-break:break-all;margin:8px 0;font-family:monospace;user-select:all;cursor:text}
-.spinner{width:16px;height:16px;border:2px solid #1e3a1e;border-top-color:#4ade80;border-radius:50%;animation:spin .7s linear infinite;display:inline-block;vertical-align:middle;margin-right:6px}
-@keyframes spin{to{transform:rotate(360deg)}}
-.guide-row{display:flex;align-items:center;gap:10px;font-size:13px;margin-bottom:7px}
-.guide-badge{border-radius:6px;padding:3px 8px;font-weight:700;font-size:12px;min-width:34px;text-align:center}
-.err{color:#f87171;font-size:13px;margin:-6px 0 8px}
-.divider{border-top:1px solid #1e3a1e;margin:14px 0 10px;text-align:center;color:#334;font-size:11px;padding-top:12px}
-.others{background:#0d1a0d;border-radius:8px;padding:8px 10px;margin-top:6px}
-.auto-badge{background:#0a1e0a;border:1px solid #1e4a1e;border-radius:8px;padding:4px 10px;font-size:11px;color:#4ade80;display:inline-flex;align-items:center;gap:4px}
-.dot{width:7px;height:7px;border-radius:50%;background:#4ade80;animation:blink 2s infinite}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
-</style>
-</head>
-<body>
-<div class="toast" id="toast"></div>
-
-<!-- ═══ LOGIN PAGE ═══ -->
-<div id="pg-login" class="page active">
-<div class="center">
-<div class="card" style="max-width:400px;width:100%">
-  <div style="text-align:center;font-size:52px;margin-bottom:6px">⚽</div>
-  <h1 style="text-align:center;font-size:22px;font-weight:800;color:#4ade80;margin-bottom:4px">WC 2026 Predictor</h1>
-  <p style="text-align:center;color:#6b8f6b;font-size:13px;margin-bottom:18px">Arkadaşlarınla tahmin yap, puan kazan!</p>
-  <div class="share-box">
-    <p style="color:#86efac;font-size:12px;font-weight:700;margin-bottom:4px">Bu linki arkadaşlarına gönder:</p>
-    <div class="share-url" id="share-url-txt">—</div>
-    <button class="btn-sm" onclick="copyLink()" style="background:#1e3a4e;color:#86cfef;width:100%;margin-top:6px">Linki Kopyala</button>
-  </div>
-  <input class="inp" id="li-name" placeholder="Kullanıcı adın" onkeydown="if(event.key==='Enter')doLogin()">
-  <p class="err" id="li-err" style="display:none"></p>
-  <button class="btn" onclick="doLogin()">Giriş Yap →</button>
-  <div class="divider">Admin Girişi</div>
-  <div style="display:flex;gap:8px">
-    <input class="inp" id="li-akey" type="password" placeholder="Admin şifre" style="flex:1;margin-bottom:0" onkeydown="if(event.key==='Enter')doAdminLogin()">
-    <button class="btn-sm" onclick="doAdminLogin()" style="background:#4ade80;color:#0a1a0a;flex-shrink:0;padding:0 16px">Gir</button>
-  </div>
-  <div style="margin-top:18px;border-top:1px solid #1e3a1e;padding-top:16px">
-    <div class="guide-row"><span class="guide-badge" style="background:#166534;color:#4ade80">+3p</span> Kazananı doğru bil</div>
-    <div class="guide-row"><span class="guide-badge" style="background:#166534;color:#4ade80">+5p</span> Skoru tam bil (3+2)</div>
-    <div class="guide-row"><span class="guide-badge" style="background:#451a03;color:#f59e0b">+7p</span> Her gol atan oyuncu</div>
-  </div>
-</div>
-</div>
-</div>
-
-<!-- ═══ MAIN NAV ═══ -->
-<nav class="nav" id="main-nav" style="display:none">
-  <span class="logo">⚽ WC 2026</span>
-  <div style="display:flex;align-items:center;gap:6px">
-    <span class="auto-badge" id="auto-badge" style="display:none"><span class="dot"></span>Oto-güncelleme aktif</span>
-    <button class="nav-btn active" id="nb-matches" onclick="showMain('matches')">Maçlar</button>
-    <button class="nav-btn" id="nb-lb" onclick="showMain('lb')">🏆 Sıralama</button>
-    <button class="nav-btn" onclick="doLogout()">Çıkış</button>
-  </div>
-</nav>
-<nav class="nav" id="admin-nav" style="display:none">
-  <span class="logo" style="color:#f87171">🔧 Admin</span>
-  <div><button class="nav-btn" onclick="doLogout()">Çıkış</button></div>
-</nav>
-
-<!-- ═══ APP SHELL ═══ -->
-<div class="app-layout" id="app-shell" style="display:none">
-
-  <!-- MAIN CONTENT -->
-  <div style="flex:1;min-width:0">
-    <!-- MATCHES -->
-    <div id="pg-matches" class="page active" style="padding:16px 12px">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;flex-wrap:wrap;gap:8px">
-        <div>
-          <h2 style="margin:0;font-size:18px;font-weight:800">Merhaba <span style="color:#4ade80" id="h-user"></span> 👋</h2>
-          <p style="margin:3px 0 0;color:#6b8f6b;font-size:12px" id="h-stats"></p>
-        </div>
-        <button class="btn-outline" id="rf-btn" onclick="manualFetch()">🔄 Şimdi Güncelle</button>
-      </div>
-      <div class="tabs">
-        <button class="tab active" id="tab-upcoming" onclick="switchTab('upcoming')">Yaklaşan</button>
-        <button class="tab" id="tab-today" onclick="switchTab('today')">Bugün</button>
-        <button class="tab" id="tab-finished" onclick="switchTab('finished')">Biten</button>
-      </div>
-      <div id="match-list"></div>
-    </div>
-
-    <!-- PREDICT -->
-    <div id="pg-predict" class="page" style="padding:16px 12px">
-      <button onclick="showMain('matches')" style="background:transparent;color:#6b8f6b;border:none;cursor:pointer;font-size:13px;margin-bottom:12px;padding:0">← Geri</button>
-      <div class="card" id="predict-card"></div>
-    </div>
-
-    <!-- ADMIN EDIT -->
-    <div id="pg-admin-edit" class="page" style="padding:16px 12px">
-      <button onclick="showMain('admin')" style="background:transparent;color:#f87171;border:none;cursor:pointer;font-size:13px;margin-bottom:12px;padding:0">← İptal</button>
-      <div class="card" id="admin-edit-card"></div>
-    </div>
-
-    <!-- LEADERBOARD -->
-    <div id="pg-lb" class="page" style="padding:16px 12px">
-      <h2 style="margin:0 0 14px;font-size:20px;font-weight:800">🏆 Sıralama Tablosu</h2>
-      <div id="lb-list"></div>
-    </div>
-
-    <!-- ADMIN PANEL -->
-    <div id="pg-admin" class="page" style="padding:16px 12px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
-        <h2 style="margin:0;color:#f87171;font-size:17px">🔧 Admin – Sonuç Listesi</h2>
-        <button class="btn-outline" id="admin-rf-btn" onclick="manualFetch()" style="border-color:#f87171;color:#f87171">🔄 Canlı Sonuçları Çek</button>
-      </div>
-      <div id="admin-api-section"></div>
-      <div id="admin-list"></div>
-    </div>
-  </div>
-
-  <!-- SIDEBAR SCOREBOARD -->
-  <aside class="sidebar" id="sidebar">
-    <div class="sb-title">🏆 Sıralama <span id="sb-player-count" style="color:#6b8f6b;font-size:11px;font-weight:400"></span></div>
-    <div id="sb-list"></div>
-    <div style="margin-top:12px;border-top:1px solid #1e3a1e;padding-top:10px">
-      <div style="color:#334;font-size:10px;margin-bottom:6px">Puan sistemi:</div>
-      <div style="font-size:10px;color:#6b8f6b;line-height:1.8">+3p kazananı bil<br>+5p skoru tam bil<br>+7p her gol atan</div>
-    </div>
-  </aside>
-  
-</div>
-
-<script>
 // ════════════════════════════════════════════════
-//  FIREBASE AYARLARI
+//  PLAYER_STATS — Wikipedia 2026 FIFA Dünya Kupası kadroları
+//  Veri: milli takım caps (c) + gol (g). Turnuva başı (11 Haz 2026) itibariyle.
+//  Anahtarlar RAW_SQUADS'taki oyuncu isimleriyle BİREBİR eşleşir.
+//  Asist (a) kaldırıldı. Wikipedia'nın final kadrosunda olmayan oyuncular yok (UI'da "—" görünür).
 // ════════════════════════════════════════════════
-const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyDZSlGkMUe7OEuqShJEzphmexL64YGbhTg",
-  authDomain: "palamuts-wc2026.firebaseapp.com",
-  databaseURL: "https://palamuts-wc2026-default-rtdb.firebaseio.com",
-  projectId: "palamuts-wc2026",
-  appId: "1:755134558744:web:f6a787312a9bc3d0ec896d"
+const PLAYER_STATS = {
+  // ── Meksika ──
+  "Carlos Acevedo":{c:7,g:0},"Guillermo Ochoa":{c:152,g:0},"Raúl Rangel":{c:13,g:0},
+  "Jesús Gallardo":{c:120,g:3},"Israel Reyes":{c:33,g:2},"César Montes":{c:66,g:4},"Jorge Sánchez":{c:58,g:3},"Johan Vásquez":{c:45,g:2},"Mateo Chávez":{c:9,g:0},
+  "Gilberto Mora":{c:7,g:0},"Edson Álvarez":{c:97,g:7},"Orbelín Pineda":{c:91,g:12},"Luis Romo":{c:62,g:4},"Brian Gutiérrez":{c:6,g:2},"Obed Vargas":{c:6,g:0},"César Huerta":{c:26,g:3},"Luis Chavez":{c:44,g:4},"Erik Lira":{c:24,g:0},"Álvaro Fidalgo":{c:3,g:0},"Roberto Alvarado":{c:66,g:5},
+  "Armando González":{c:7,g:1},"Raúl Jiménez":{c:123,g:44},"Julián Quiñones":{c:21,g:2},"Santiago Gimenez":{c:47,g:6},"Guillermo Martínez":{c:11,g:3},"Alexis Vega":{c:51,g:7},
+
+  // ── Güney Afrika ──
+  "Ronwen Williams":{c:62,g:0},"Ricardo Goss":{c:4,g:0},"Sipho Chaine":{c:3,g:0},
+  "Khuliso Mudau":{c:32,g:1},"Nkosinathi Sibisi":{c:19,g:0},"Ime Okon":{c:7,g:1},"Khulumani Ndamane":{c:5,g:0},"Aubrey Modiba":{c:44,g:3},"Samukelo Kabini":{c:5,g:0},"Thabang Matuludi":{c:2,g:0},"Olwethu Makhanya":{c:0,g:0},"Kamgogelo Sebelebele":{c:2,g:0},"Bradley Cross":{c:0,g:0},"Mbekezeli Mbokazi":{c:10,g:1},
+  "Teboho Mokoena":{c:51,g:9},"Thalente Mbatha":{c:14,g:3},"Yaya Sithole":{c:27,g:1},"Jayden Adams":{c:4,g:0},
+  "Oswin Appollis":{c:25,g:8},"Iqraam Rayners":{c:13,g:4},"Tshepang Moremi":{c:9,g:1},"Relebohile Mofokeng":{c:12,g:0},"Evidence Makgopa":{c:26,g:6},"Themba Zwane":{c:53,g:12},"Lyle Foster":{c:26,g:10},"Thapelo Maseko":{c:9,g:1},
+
+  // ── Güney Kore ──
+  "Jo Hyun-Woo":{c:48,g:0},"Kim Seung-Gyu":{c:86,g:0},"Song Bum-Keun":{c:2,g:0},
+  "Kim Min-Jae":{c:78,g:4},"Lee Han-Beom":{c:7,g:0},"Kim Tae-Hyun":{c:7,g:0},"Park Jin-Seop":{c:13,g:1},"Lee Ki-Hyeok":{c:2,g:0},"Lee Tae-Seok":{c:14,g:1},"Seol Young-Woo":{c:33,g:0},"Jens Castrop":{c:6,g:0},"Kim Moon-Hwan":{c:35,g:0},
+  "Yang Hyun-Jun":{c:8,g:0},"Paik Seung-Ho":{c:26,g:3},"Hwang In-Beom":{c:72,g:6},"Kim Jin-Kyu":{c:21,g:3},"Bae Jun-Ho":{c:13,g:2},"Um Ji-Sung":{c:9,g:2},"Hwang Hee-Chan":{c:78,g:17},"Lee Dong-Gyeong":{c:17,g:3},"Lee Jae-Sung":{c:104,g:15},"Lee Kang-In":{c:46,g:11},
+  "Oh Hyun-Kyu":{c:26,g:6},"Son Heung-Min":{c:143,g:56},"Cho Kyu-Sung":{c:43,g:12},
+
+  // ── Çekya ──
+  "Lukas Hornicek":{c:1,g:0},"Jindrich Stanek":{c:14,g:0},
+  "Vladimír Coufal":{c:61,g:2},"David Douděra":{c:16,g:2},"Tomáš Holeš":{c:40,g:2},"Robin Hranáč":{c:13,g:1},"Štěpán Chaloupek":{c:4,g:0},"David Jurásek":{c:17,g:1},"Ladislav Krejčí":{c:26,g:5},"Jaroslav Zelený":{c:22,g:0},"David Zima":{c:24,g:1},
+  "Lukás Cerv":{c:16,g:2},"Vladimir Darida":{c:78,g:8},"Lukás Provod":{c:37,g:3},"Michal Sadílek":{c:34,g:1},"Hugo Sochůrek":{c:1,g:0},"Alexandr Sojka":{c:1,g:0},"Tomáš Souček":{c:89,g:17},
+  "Adam Hložek":{c:42,g:5},"Tomáš Chorý":{c:21,g:6},"Mojmír Chytil":{c:22,g:6},"Jan Kuchta":{c:31,g:3},"Patrik Schick":{c:52,g:25},"Denis Višinský":{c:1,g:0},
+
+  // ── Kanada ──
+  "Dayne St. Clair":{c:19,g:0},"Maxime Crépeau":{c:30,g:0},"Owen Goodman":{c:0,g:0},
+  "Moïse Bombito":{c:19,g:0},"Derek Cornelius":{c:42,g:1},"Alphonso Davies":{c:58,g:15},"Luc De Fougerolles":{c:11,g:0},"Alistair Johnston":{c:56,g:1},"Alfie Jones":{c:1,g:0},"Richie Laryea":{c:73,g:1},"Niko Sigur":{c:17,g:2},"Joel Waterman":{c:17,g:0},
+  "Ali Ahmed":{c:24,g:1},"Tajon Buchanan":{c:58,g:8},"Mathieu Choinière":{c:22,g:0},"Stephen Eustáquio":{c:54,g:4},"Ismaël Koné":{c:38,g:4},"Liam Millar":{c:39,g:1},"Jonathan Osorio":{c:89,g:9},"Nathan Saliba":{c:13,g:2},"Jacob Shaffelburg":{c:31,g:6},
+  "Jonathan David":{c:75,g:39},"Promise David":{c:8,g:3},"Cyle Larin":{c:88,g:30},"Tani Oluwaseyi":{c:22,g:2},
+
+  // ── Bosna Hersek ──
+  "Nikola Vasilj":{c:25,g:0},"Martin Zlomislic":{c:3,g:0},"Osman Hadzikic":{c:0,g:0},
+  "Sead Kolasinac":{c:64,g:0},"Amar Dedic":{c:27,g:1},"Nihad Mujakic":{c:11,g:1},"Nikola Katic":{c:16,g:1},"Tarık Muharemovic":{c:13,g:1},"Stjepan Radeljic":{c:5,g:0},"Dennis Hadzikadunic":{c:31,g:0},"Nidal Çelik":{c:1,g:0},
+  "Amir Hadziahmetovic":{c:35,g:0},"Ivan Sunjic":{c:11,g:0},"Ivan Basic":{c:16,g:0},"Dzenis Burnic":{c:19,g:0},"Ermin Mahmic":{c:1,g:0},"Benjamin Tahirovic":{c:27,g:2},"Amar Memic":{c:12,g:1},"Armin Gigovic":{c:19,g:1},"Kerim Alajbegovic":{c:9,g:1},"Esmir Bajraktareviç":{c:15,g:1},
+  "Ermedin Demirovic":{c:39,g:4},"Jovo Lukic":{c:2,g:0},"Samed Bazdar":{c:12,g:1},"Haris Tabakovic":{c:10,g:4},"Edin Dzeko":{c:148,g:73},
+
+  // ── Katar ──
+  "Salah Zakaria":{c:8,g:0},"Meshaal Barsham":{c:52,g:0},"Mahmoud Abunada":{c:4,g:0},
+  "Boualem Khoukhi":{c:115,g:20},"Pedro Miguel":{c:98,g:3},"Sultan Al Brake":{c:16,g:0},"Al-Hashmi Al-Hussain":{c:7,g:0},"Ayoub Al-Alawi":{c:5,g:0},"Issa Laye":{c:3,g:0},"Lucas Mendes":{c:25,g:1},"Homam Al-Amin":{c:67,g:3},
+  "Ahmed Fathi":{c:47,g:0},"Jassim Gaber":{c:31,g:1},"Assim Madibo":{c:50,g:0},"Abdulaziz Hatem":{c:117,g:11},"Karim Boudiaf":{c:117,g:5},"Mohammed Mannai":{c:9,g:0},
+  "Almoez Ali":{c:115,g:55},"Akram Afif":{c:124,g:39},"Tahsin Mohammed":{c:2,g:0},"Edmílson Junior":{c:15,g:0},"Ahmed Al-Ganehi":{c:13,g:1},"Ahmed Alaa":{c:67,g:9},"Hassan Al-Haydos":{c:185,g:41},"Mohammed Muntari":{c:67,g:16},"Yusuf Abdurisag":{c:38,g:3},
+
+  // ── İsviçre ──
+  "Gregor Kobel":{c:20,g:0},"Yvon Mvogo":{c:13,g:0},"Marvin Keller":{c:1,g:0},
+  "Manuel Akanji":{c:80,g:4},"Nico Elvedi":{c:66,g:3},"Ricardo Rodriguez":{c:137,g:9},"Silvan Widmer":{c:59,g:5},"Miro Muheim":{c:9,g:0},"Aurèle Amenda":{c:6,g:0},"Eray Cömert":{c:21,g:0},"Luca Jaquez":{c:3,g:0},
+  "Granit Xhaka":{c:145,g:17},"Johan Manzambi":{c:11,g:3},"Remo Freuler":{c:87,g:11},"Denis Zakaria":{c:64,g:3},"Ardon Jashari":{c:7,g:0},"Djibril Sow":{c:51,g:0},"Christian Fassnacht":{c:22,g:5},"Michel Aebischer":{c:39,g:2},"Fabian Rieder":{c:27,g:1},"Rubén Vargas":{c:61,g:11},
+  "Breel Embolo":{c:86,g:24},"Noah Okafor":{c:24,g:2},"Dan Ndoye":{c:30,g:7},"Zeki Amdouni":{c:28,g:11},"Cedric Itten":{c:14,g:5},
+
+  // ── Brezilya ──
+  "Alisson":{c:77,g:0},"Éderson":{c:32,g:0},"Weverton":{c:10,g:0},
+  "Alex Sandro":{c:44,g:2},"Bremer":{c:7,g:1},"Danilo":{c:69,g:1},"Douglas Santos":{c:6,g:0},"Gabriel Magalhäes":{c:17,g:1},"Léo Pereira":{c:3,g:0},"Marquinhos":{c:104,g:7},"Roger Ibañez":{c:6,g:0},"Wesley":{c:7,g:0},
+  "Bruno Guimarão":{c:42,g:2},"Casemiro":{c:85,g:9},"Danilo Santos":{c:3,g:2},"Fabinho":{c:32,g:0},"Lucas Paquetá":{c:62,g:13},
+  "Endrick":{c:16,g:3},"Gabriel Martinelli":{c:22,g:4},"Igor Thiago":{c:3,g:2},"Luiz Henrique":{c:14,g:2},"Matheus Cunha":{c:22,g:1},"Neymar":{c:128,g:79},"Raphinha":{c:38,g:11},"Rayan":{c:2,g:1},"Vinícius Júnior":{c:48,g:9},
+
+  // ── Fas ──
+  "Yassine Bounou":{c:89,g:0},"Munir El Kajoui":{c:51,g:0},"Reda Tagnaouti":{c:3,g:0},
+  "Noussair Mazraoui":{c:43,g:2},"Anass Salah-Eddine":{c:8,g:0},"Youssef Belammari":{c:16,g:0},"Achraf Hakimi":{c:95,g:11},"Zakaria El Ouahdi":{c:2,g:0},"Chadi Riad":{c:4,g:1},"Nayef Aguerd":{c:64,g:2},"Redouane Halhal":{c:1,g:0},"Issa Diop":{c:2,g:0},
+  "Samir El Mourabet":{c:2,g:0},"Ayyoub Bouaddi":{c:1,g:0},"Neil El Aynaoui":{c:15,g:2},"Sofyan Amrabat":{c:73,g:0},"Azzedine Ounahi":{c:47,g:9},"Bilal El Khannouss":{c:35,g:3},"Ismael Saibari":{c:28,g:7},
+  "Abde Ezzalzouli":{c:35,g:2},"Chemsdine Talbi":{c:5,g:0},"Soufiane Rahimi":{c:35,g:11},"Ayoub El Kaabi":{c:57,g:22},"Brahim Díaz":{c:24,g:13},"Gessime Yassine":{c:3,g:0},"Ayoube Amaimouni":{c:0,g:0},
+
+  // ── Haiti ──
+  "Johny Placide":{c:79,g:0},"Alexandre Pierre":{c:14,g:0},"Josue Duverger":{c:6,g:0},
+  "Carlens Arcus":{c:51,g:1},"Wilguens Paugain":{c:6,g:0},"Duke Lacroix":{c:14,g:2},"Martin Expérience":{c:19,g:0},"Jean-Kévin Duverne":{c:15,g:1},"Ricardo Adé":{c:57,g:2},"Hannes Delcroix":{c:5,g:0},"Keeto Thermoncy":{c:1,g:0},
+  "Carl Fred Sainté":{c:25,g:0},"Leverton Pierre":{c:33,g:0},"Danley Jean Jacques":{c:28,g:6},"Jean-Ricner Bellegarde":{c:8,g:0},"Woodensky Pierre":{c:1,g:0},"Dominique Simon":{c:0,g:0},
+  "Don Deedson Louicius":{c:30,g:10},"Josué Casimir":{c:5,g:0},"Derrick Etienne":{c:46,g:8},"Ruben Providence":{c:13,g:2},"Duckens Nazon":{c:76,g:44},"Frantzdy Pierrot":{c:49,g:33},"Wilson Isidor":{c:2,g:1},"Yassin Fortuné":{c:3,g:0},"Lenny Joseph":{c:0,g:0},
+
+  // ── İskoçya ──
+  "Craig Gordon":{c:84,g:0},"Angus Gunn":{c:21,g:0},"Liam Kelly":{c:3,g:0},
+  "Grant Hanley":{c:67,g:2},"Jack Hendry":{c:37,g:3},"Aaron Hickey":{c:20,g:0},"Dom Hyam":{c:3,g:0},"Scott McKenna":{c:50,g:1},"Nathan Patterson":{c:26,g:1},"Anthony Ralston":{c:26,g:1},"Andy Robertson":{c:93,g:4},"John Souttar":{c:23,g:2},"Kieran Tierney":{c:55,g:2},
+  "Ryan Christie":{c:67,g:10},"Finlay Curtis":{c:2,g:1},"Lewis Ferguson":{c:23,g:1},"Ben Gannon-Doak":{c:13,g:1},"John McGinn":{c:85,g:20},"Kenny McLean":{c:57,g:3},"Scott McTominay":{c:69,g:14},
+  "Ché Adams":{c:46,g:11},"Lyndon Dykes":{c:51,g:10},"George Hirst":{c:9,g:1},"Lawrence Shankland":{c:19,g:6},"Ross Stewart":{c:2,g:0},
+
+  // ── ABD ──
+  "Chris Brady":{c:1,g:0},"Matt Freese":{c:14,g:0},"Matt Turner":{c:54,g:0},
+  "Max Arfsten":{c:19,g:1},"Sergiño Dest":{c:38,g:3},"Alex Freeman":{c:16,g:2},"Mark McKenzie":{c:28,g:0},"Tim Ream":{c:81,g:1},"Chris Richards":{c:36,g:3},"Antonee Robinson":{c:53,g:4},"Miles Robinson":{c:39,g:3},"Joe Scally":{c:25,g:0},"Auston Trusty":{c:7,g:0},
+  "Tyler Adams":{c:53,g:2},"Sebastian Berhalter":{c:12,g:1},"Weston McKennie":{c:65,g:12},"Cristian Roldan":{c:46,g:0},"Brenden Aaronson":{c:57,g:9},"Malik Tillman":{c:29,g:3},"Tim Weah":{c:50,g:7},"Alejandro Zendejas":{c:14,g:2},
+  "Christian Pulisic":{c:85,g:33},"Gio Reyna":{c:37,g:9},"Folarin Balogun":{c:26,g:9},"Ricardo Pepi":{c:36,g:13},"Haji Wright":{c:20,g:7},
+
+  // ── Avustralya ──
+  "Mathew Ryan":{c:104,g:0},"Paul Izzo":{c:4,g:0},"Patrick Beach":{c:1,g:0},
+  "Jordan Bos":{c:26,g:4},"Aziz Behich":{c:83,g:3},"Harry Souttar":{c:37,g:11},"Alessandro Circati":{c:12,g:1},"Lucas Herrington":{c:3,g:0},"Cameron Burgess":{c:26,g:0},"Kai Trewin":{c:5,g:0},"Milos Degenek":{c:56,g:1},"Jason Geria":{c:13,g:0},"Jacob Italiano":{c:4,g:0},
+  "Jackson Irvine":{c:81,g:14},"Aiden O'Neill":{c:30,g:0},"Paul Okon Jr":{c:5,g:0},"Cameron Devlin":{c:4,g:0},
+  "Connor Metcalfe":{c:35,g:1},"Mathew Leckie":{c:79,g:14},"Nishan Velupillay":{c:7,g:3},"Cristian Volpato":{c:0,g:0},"Nestory Irankunda":{c:14,g:5},"Awer Mabil":{c:38,g:10},"Ajdin Hrustic":{c:37,g:4},"Mohamed Toure":{c:9,g:2},"Tete Yengi":{c:0,g:0},
+
+  // ── Paraguay ──
+  "Roberto Fernández":{c:30,g:0},"Orlando Gill":{c:5,g:0},"Gastón Olveira":{c:1,g:0},
+  "Gustavo Gómez":{c:88,g:4},"Júnior Alonso":{c:70,g:3},"Fabián Balbuena":{c:47,g:2},"Omar Alderete":{c:35,g:3},"Juan Caceres":{c:16,g:0},"Jose Canale":{c:1,g:0},"Alexandro Maidana":{c:1,g:0},"Gustavo Velázquez":{c:12,g:1},
+  "Miguel Almirón":{c:75,g:9},"Kaku":{c:32,g:5},"Andrés Cubas":{c:32,g:0},"Ramón Sosa":{c:28,g:1},"Diego Gómez":{c:23,g:3},"Damián Bobadilla":{c:19,g:1},"Braian Ojeda":{c:16,g:0},"Matías Galarza":{c:14,g:2},"Maurício":{c:2,g:0},
+  "Antonio Sanabria":{c:47,g:7},"Julio Enciso":{c:31,g:4},"Gabriel Ávalos":{c:22,g:2},"Alex Arce":{c:14,g:1},"Isidro Pitta":{c:5,g:0},"Gustavo Caballero":{c:2,g:1},
+
+  // ── Türkiye ──
+  "Uğurcan Çakır":{c:38,g:0},"Mert Günok":{c:37,g:0},"Altay Bayındır":{c:11,g:0},
+  "Merih Demiral":{c:61,g:6},"Zeki Çelik":{c:59,g:3},"Çağlar Soyuncu":{c:59,g:2},"Mert Müldür":{c:43,g:3},"Ferdi Kadıoğlu":{c:30,g:2},"Ozan Kabak":{c:28,g:2},"Abdulkerim Bardakçı":{c:26,g:2},"Eren Elmalı":{c:21,g:0},"Samet Akaydin":{c:18,g:1},
+  "Hakan Calhanoglou":{c:104,g:22},"Kaan Ayhan":{c:72,g:5},"Orkun Kökçü":{c:48,g:3},"İsmail Yüksek":{c:31,g:1},"Salih Özcan":{c:28,g:1},
+  "Kerem Aktürkoğlu":{c:51,g:15},"İrfan Can Kahveci":{c:45,g:6},"Barış Apler Yılmaz":{c:33,g:2},"Arda Güler":{c:28,g:6},"Kenan Yıldız":{c:28,g:5},"Yunus Akgün":{c:17,g:3},"Oğuz Aydın":{c:9,g:0},"Deniz Gül":{c:6,g:1},"Can Uzun":{c:4,g:0},
+
+  // ── Almanya ──
+  "Oliver Baumann":{c:12,g:0},"Manuel Neuer":{c:124,g:0},"Alexander Nübel":{c:3,g:0},
+  "Waldemar Anton":{c:12,g:0},"Nathaniel Brown":{c:4,g:0},"David Raum":{c:36,g:1},"Antonio Rüdiger":{c:82,g:3},"Nico Schlotterbeck":{c:26,g:0},"Jonathan Tah":{c:46,g:1},"Malick Thiaw":{c:5,g:0},
+  "Pascal Gross":{c:18,g:1},"Joshua Kimmich":{c:109,g:11},"Felix Nmecha":{c:7,g:1},"Aleksandar Pavlovic":{c:10,g:1},"Angelo Stiller":{c:7,g:0},"Leon Goretzka":{c:69,g:15},"Florian Wirtz":{c:40,g:11},"Jamie Leweling":{c:4,g:1},
+  "Maximilian Beier":{c:8,g:0},"Kai Havertz":{c:57,g:21},"Lennart Karl":{c:3,g:0},"Jamal Musiala":{c:41,g:9},"Leroy Sané":{c:75,g:16},"Deniz Undav":{c:8,g:6},"Nick Woltemade":{c:11,g:4},
+
+  // ── Curaçao ──
+  "Eloy Room":{c:71,g:0},"Tyrick Bodak":{c:4,g:0},"Trevor Doornbusch":{c:7,g:0},
+  "Riechedly Bazoer":{c:4,g:0},"Joshua Brenet":{c:17,g:1},"Roshon van Eijma":{c:27,g:1},"Sherel Floranus":{c:27,g:0},"Deveron Fonville":{c:1,g:0},"Jurien Gaari":{c:59,g:1},"Armando Obispo":{c:5,g:0},"Shurandy Sambo":{c:7,g:0},
+  "Juninho Bacuna":{c:48,g:14},"Leandro Bacuna":{c:71,g:16},"Livano Comenencia":{c:19,g:1},"Kevin Felida":{c:19,g:1},"Ar'jany Martha":{c:8,g:2},"Tyrese Noslin":{c:6,g:1},"Godfried Roemeratoe":{c:27,g:1},
+  "Jeremy Antonisse":{c:26,g:3},"Tahith Chong":{c:5,g:3},"Kenji Gorre":{c:37,g:6},"Sontje Hansen":{c:5,g:1},"Gervane Kastaneer":{c:28,g:9},"Brandley Kuwas":{c:34,g:2},"Jurgen Locadia":{c:13,g:1},"Jearl Margaritha":{c:21,g:5},
+
+  // ── Fildişi Sahili ──
+  "Yahia Fofana":{c:34,g:0},"Mohamed Koné":{c:0,g:0},"Alban Lafont":{c:4,g:0},
+  "Emmanuel Agbadou":{c:19,g:2},"Ousmane Diomande":{c:14,g:1},"Guela Doué":{c:19,g:2},"Ghislain Konan":{c:53,g:0},"Odilon Kossounou":{c:35,g:0},"Evan Ndicka":{c:28,g:0},"Wilfried Singo":{c:33,g:1},
+  "Seko Fofana":{c:31,g:7},"Parfait Guiagon":{c:5,g:0},"Franck Kessié":{c:102,g:15},"Christ Inao Oulaï":{c:8,g:0},"Ibrahim Sangaré":{c:57,g:12},"Jean Michaël Seri":{c:65,g:4},
+  "Simon Adingra":{c:28,g:5},"Ange-Yoan Bonny":{c:0,g:0},"Amad Diallo":{c:18,g:5},"Oumar Diakité":{c:28,g:6},"Yan Diomande":{c:9,g:3},"Evann Guessand":{c:21,g:4},"Nicolas Pépé":{c:54,g:12},"Bazoumana Touré":{c:5,g:2},"Elye Wahi":{c:1,g:0},
+
+  // ── Ekvador ──
+  "Hernán Galíndez":{c:34,g:0},"Moisés Ramírez":{c:7,g:0},"Gonzalo Valle":{c:3,g:0},
+  "Willian Pacho":{c:34,g:2},"Piero Hincapié":{c:51,g:3},"Joel Ordóñez":{c:16,g:0},"Félix Torres":{c:48,g:5},"Pervis Estupiñán":{c:53,g:4},"Yaimar Medina":{c:5,g:0},"Ángelo Preciado":{c:54,g:0},"Jackson Porozo":{c:9,g:1},
+  "Alan Minda":{c:19,g:2},"Moisés Caicedo":{c:60,g:3},"Jordy Alcivar":{c:10,g:1},"Denil Castillo":{c:5,g:0},"John Yeboah":{c:22,g:3},"Alan Franco":{c:57,g:1},"Pedro Vite":{c:16,g:1},"Kendry Páez":{c:25,g:2},"Nilson Angulo":{c:13,g:1},"Gonzalo Plata":{c:49,g:8},
+  "Kevin Rodríguez":{c:31,g:2},"Anthony Valencia":{c:2,g:1},"Enner Valencia":{c:105,g:49},"Jordy Caicedo":{c:19,g:3},"Jeremy Arévalo":{c:3,g:0},
+
+  // ── Hollanda ──
+  "Mark Flekken":{c:11,g:0},"Robin Roefs":{c:0,g:0},"Bart Verbruggen":{c:27,g:0},
+  "Nathan Aké":{c:58,g:5},"Denzel Dumfries":{c:71,g:11},"Jorrel Hato":{c:7,g:0},"Jurriën Timber":{c:23,g:0},"Jan Paul van Hecke":{c:10,g:0},"Micky van de Ven":{c:19,g:1},"Virgil van Dijk":{c:90,g:12},
+  "Frenkie de Jong":{c:64,g:2},"Marten de Roon":{c:42,g:1},"Ryan Gravenberch":{c:25,g:1},"Teun Koopmeiners":{c:27,g:3},"Tijjani Reijnders":{c:30,g:7},"Guus Til":{c:6,g:1},"Quinten Timber":{c:10,g:1},"Mats Wieffer":{c:14,g:1},
+  "Brian Brobbey":{c:10,g:1},"Memphis Depay":{c:108,g:55},"Cody Gakpo":{c:48,g:19},"Justin Kluivert":{c:11,g:0},"Noa Lang":{c:15,g:3},"Donyell Malen":{c:51,g:13},"Crysencio Summerville":{c:0,g:0},"Wout Weghorst":{c:51,g:14},
+
+  // ── Japonya ──
+  "Zion Suzuki":{c:24,g:0},"Keisuke Osako":{c:11,g:0},"Tomoki Hayakawa":{c:4,g:0},
+  "Yūto Nagatomo":{c:145,g:4},"Shogo Taniguchi":{c:38,g:1},"Ko Itakura":{c:40,g:2},"Tsuyoshi Watanabe":{c:11,g:0},"Takehiro Tomiyasu":{c:43,g:1},"Hiroki Ito":{c:24,g:1},"Ayumu Seko":{c:14,g:0},"Yukinari Sugawara":{c:21,g:2},
+  "Junnosuke Suzuki":{c:6,g:0},"Wataru Endo":{c:73,g:4},"Junya Ito":{c:69,g:15},"Daichi Kamada":{c:49,g:12},"Ritsu Doan":{c:65,g:11},"Ao Tanaka":{c:38,g:8},"Keito Nakamura":{c:25,g:10},"Kaishu Sano":{c:13,g:0},"Takefusa Kubo":{c:49,g:7},"Yuito Suzuki":{c:6,g:0},
+  "Koki Ogawa":{c:15,g:11},"Daizen Maeda":{c:27,g:4},"Ayase Ueda":{c:39,g:16},"Kento Shiogai":{c:2,g:0},"Keisuke Goto":{c:4,g:0},
+
+  // ── İsveç ──
+  "Viktor Johansson":{c:12,g:0},"Kristoffer Nordfeldt":{c:20,g:0},"Jacob Widell Zetterstrom":{c:3,g:0},
+  "Hjalmar Ekdal":{c:12,g:0},"Gabriel Gudmundsson":{c:23,g:0},"Isak Hien":{c:28,g:0},"Gustaf Lagerbielke":{c:10,g:2},"Victor Lindelöf":{c:76,g:3},"Erik Smith":{c:1,g:0},"Carl Starfelt":{c:17,g:0},"Elliot Stroud":{c:0,g:0},"Daniel Svensson":{c:12,g:0},
+  "Taha Ali":{c:1,g:0},"Yasin Ayari":{c:20,g:3},"Lucas Bergvall":{c:9,g:0},"Jesper Karlström":{c:24,g:0},"Ken Sema":{c:33,g:5},"Mattias Svanberg":{c:40,g:2},"Besfort Zeneli":{c:7,g:0},
+  "Alexander Bernhardsson":{c:10,g:0},"Anthony Elanga":{c:29,g:6},"Viktor Gyökeres":{c:32,g:19},"Alexander Isak":{c:57,g:17},"Gustaf Nilsson":{c:9,g:3},"Benjamin Nygren":{c:10,g:3},
+
+  // ── Tunus ──
+  "Aymen Dahmen":{c:37,g:0},"Sabri Ben Hessen":{c:2,g:0},"Abdelmouhib Chamakh":{c:1,g:0},
+  "Montassar Talbi":{c:62,g:4},"Dylan Bronn":{c:52,g:2},"Omar Rekik":{c:4,g:0},"Yan Valery":{c:21,g:0},"Ali Abdi":{c:45,g:7},"Moutaz Neffati":{c:5,g:0},"Raed Chikhaoui":{c:0,g:0},"Adam Arous":{c:1,g:0},"Mohamed Amine Ben Hamida":{c:12,g:0},
+  "Ellyes Skhiri":{c:81,g:4},"Hannibal Mejbri":{c:44,g:1},"Anis Ben Slimane":{c:39,g:4},"Hadj Mahmoud":{c:7,g:0},"Rani Khedira":{c:2,g:0},"Mortadha Ben Ouanes":{c:17,g:0},
+  "Elias Achouri":{c:29,g:4},"Ismaël Gharbi":{c:15,g:2},"Elias Saad":{c:14,g:4},"Sebastian Tounekti":{c:10,g:1},"Firas Chaouat":{c:28,g:6},"Khalil Ayari":{c:2,g:0},"Hazem Mastouri":{c:18,g:4},"Rayan Elloumi":{c:2,g:0},
+
+  // ── Belçika ──
+  "Thibaut Courtois":{c:107,g:0},"Senne Lammens":{c:2,g:0},"Mike Penders":{c:0,g:0},
+  "Timothy Castagne":{c:62,g:2},"Zeno Debast":{c:26,g:1},"Maxim De Cuyper":{c:17,g:4},"Koni De Winter":{c:7,g:0},"Brandon Mechele":{c:7,g:1},"Thomas Meunier":{c:78,g:10},"Nathan Ngoy":{c:2,g:0},"Joaquin Seys":{c:4,g:0},"Arthur Theate":{c:32,g:1},
+  "Kevin De Bruyne":{c:117,g:36},"Amadou Onana":{c:27,g:1},"Nicolas Raskin":{c:11,g:1},"Youri Tielemans":{c:83,g:12},"Hans Vanaken":{c:32,g:7},"Axel Witsel":{c:136,g:12},
+  "Charles De Ketelaere":{c:28,g:5},"Jérémy Doku":{c:41,g:7},"Matias Fernandez-Pardo":{c:0,g:0},"Romelu Lukaku":{c:124,g:89},"Dodi Lukebakio":{c:29,g:5},"Diego Moreira":{c:2,g:0},"Alexis Saelemaekers":{c:23,g:2},"Leandro Trossard":{c:50,g:11},
+
+  // ── Mısır ──
+  "Mohamed El Shenawy":{c:76,g:0},"Mostafa Shobeir":{c:8,g:0},"El Mahdy Soliman":{c:0,g:0},"Mohamed Alaa":{c:0,g:0},
+  "Mohamed Hany":{c:41,g:0},"Tarek Alaa":{c:2,g:0},"Hamdy Fathy":{c:62,g:3},"Ramy Rabia":{c:44,g:5},"Yasser Ibrahim":{c:16,g:1},"Hossam Abdelmaguid":{c:13,g:0},"Mohamed Abdelmonem":{c:35,g:3},"Ahmed Fatouh":{c:38,g:1},"Karim Hafez":{c:8,g:0},
+  "Marwan Attia":{c:33,g:1},"Mohanad Lasheen":{c:22,g:0},"Nabil Emad":{c:12,g:0},"Mahmoud Sabre":{c:15,g:1},"Ahmed Zizo":{c:62,g:5},"Emam Ashour":{c:28,g:0},"Mostafa Ziko":{c:1,g:1},"Mahmoud Trezeguet":{c:95,g:23},"Ibrahim Adel":{c:23,g:3},"Haissem Hassan":{c:3,g:0},
+  "Omar Marmoush":{c:48,g:11},"Mohamed Salah":{c:116,g:67},"Hamza Abdelkarim":{c:1,g:0},
+
+  // ── İran ──
+  "Alireza Beiranvand":{c:85,g:0},"Hossein Hosseini":{c:13,g:0},"Payam Niazmand":{c:15,g:0},
+  "Danial Eiri":{c:0,g:0},"Ehsan Hajsafi":{c:145,g:7},"Saleh Hardani":{c:17,g:1},"Hossein Kanaani":{c:64,g:6},"Shoka Khalilzadeh":{c:57,g:2},"Milad Mohammadi":{c:75,g:1},"Ali Nemati Omid Noorafkan":{c:16,g:0},"Ramin Rezaeian":{c:73,g:7},
+  "Rouzbeh Cheshmi":{c:40,g:3},"Saeid Ezatolahi":{c:82,g:1},"Mehdi Ghaedi":{c:29,g:10},"Saman Ghoddos":{c:67,g:3},"Mohammad Ghorbani":{c:15,g:0},"Alireza Jahanbakhsh":{c:98,g:17},"Mohammad Mohebi":{c:36,g:14},"Amir Mohammad Razzaghinia":{c:3,g:0},"Mehdi Torabi":{c:52,g:7},"Aria Yousefi":{c:13,g:1},
+  "Ali Alipour":{c:13,g:1},"Dennis Dargahi":{c:0,g:0},"Amirhossein Hosseinzadeh":{c:17,g:5},"Mehdi Taremi":{c:104,g:60},
+
+  // ── Yeni Zelanda ──
+  "Max Crocombe":{c:22,g:0},"Alex Paulsen":{c:6,g:0},"Michael Woud":{c:6,g:0},
+  "Tim Payne":{c:49,g:3},"Francis De Vries":{c:18,g:1},"Tyler Bindon":{c:23,g:3},"Michael Boxall":{c:61,g:1},"Liberato Cacace":{c:35,g:1},"Nando Pijnaker":{c:23,g:0},"Finn Surman":{c:17,g:2},"Callan Elliot":{c:9,g:0},"Tommy Smith":{c:56,g:2},
+  "Joe Bell":{c:31,g:1},"Matt Garbett":{c:35,g:5},"Marko Stamenic":{c:37,g:3},"Sarpreet Singh":{c:26,g:3},"Alex Rufer":{c:24,g:0},"Ryan Thomas":{c:25,g:3},
+  "Chris Wood":{c:88,g:45},"Eli Just":{c:42,g:9},"Kosta Barbarouses":{c:74,g:10},"Ben Waine":{c:30,g:9},"Ben Old":{c:22,g:2},"Callum McCowatt":{c:30,g:4},"Jesse Randall":{c:9,g:2},"Lachlan Bayliss":{c:2,g:0},
+
+  // ── İspanya ──
+  "Unai Simón":{c:57,g:0},"David Raya":{c:12,g:0},"Joan García":{c:1,g:0},
+  "Marc Cucurella":{c:23,g:1},"Pau Cubarsí":{c:11,g:0},"Aymeric Laporte":{c:44,g:2},"Álex Grimaldo":{c:12,g:0},"Pedro Porro":{c:16,g:0},"Eric García":{c:19,g:0},"Marcos Llorente":{c:23,g:0},"Marc Pubill":{c:0,g:0},
+  "Gavi":{c:28,g:5},"Rodri":{c:61,g:4},"Pedri":{c:40,g:5},"Martín Zubimendi":{c:25,g:3},"Fabián Ruiz":{c:41,g:6},"Álex Baena":{c:15,g:2},"Mikel Merino":{c:41,g:10},
+  "Lamine Yamal":{c:25,g:6},"Nico Williams":{c:30,g:6},"Dani Olmo":{c:48,g:12},"Ferran Torres":{c:55,g:23},"Mikel Oyarzabal":{c:52,g:24},"Yéremy Pino":{c:21,g:4},"Borja Iglesias":{c:6,g:0},"Víctor Muñoz":{c:2,g:1},
+
+  // ── Yeşil Burun Adaları ──
+  "Vozinha":{c:85,g:0},"Marcio Rosa":{c:10,g:0},"CJ dos Santos":{c:0,g:0},
+  "Steven Moreira":{c:18,g:0},"Wagner Pina":{c:12,g:0},"Joao Paulo":{c:40,g:1},"Sidny Lopes Cabral":{c:8,g:3},"Logan Costa":{c:26,g:0},"Pico":{c:44,g:0},"Kelvin Pires":{c:4,g:1},"Stopira":{c:60,g:4},"Diney":{c:29,g:2},
+  "Jamiro Monteiro":{c:53,g:5},"Telmo Arcanjo":{c:14,g:1},"Yannick Semedo":{c:10,g:1},"Laros Duarte":{c:12,g:0},"Deroy Duarte":{c:30,g:0},"Kevin Pina":{c:30,g:2},
+  "Ryan Mendes":{c:94,g:22},"Willy Semedo":{c:36,g:2},"Garry Rodrigues":{c:59,g:9},"Jovane Cabral":{c:25,g:2},"Nuno da Costa":{c:7,g:1},"Dailon Livramento":{c:20,g:7},"Gilson Benchimol":{c:21,g:5},"Helio Varela":{c:19,g:0},
+
+  // ── Uruguay ──
+  "Fernando Muslera":{c:134,g:0},"Sergio Rochet":{c:35,g:0},"Santiago Mele":{c:8,g:0},
+  "Ronald Araújo":{c:27,g:1},"José María Giménez":{c:99,g:8},"Santiago Bueno":{c:8,g:0},"Sebastián Cáceres":{c:24,g:0},"Mathías Olivera":{c:35,g:2},"Guillermo Varela":{c:28,g:0},"Matías Viña":{c:43,g:1},"Joaquín Piquerez":{c:19,g:0},"Juan Manuel Sanabria":{c:5,g:1},
+  "Federico Valverde":{c:73,g:9},"Rodrigo Bentancur":{c:74,g:3},"Manuel Ugarte":{c:36,g:1},"Emiliano Martínez":{c:10,g:0},"Rodrigo Zalazar":{c:8,g:2},"Giorgian De Arrascaeta":{c:60,g:13},"Nicolás De La Cruz":{c:34,g:5},"Agustín Canobbio":{c:15,g:1},"Maximiliano Araújo":{c:28,g:3},"Brian Rodríguez":{c:32,g:4},"Facundo Pellistri":{c:39,g:2},
+  "Darwin Núñez":{c:38,g:13},"Federico Viñas":{c:11,g:2},"Rodrigo Aguirre":{c:10,g:3},
+
+  // ── Suudi Arabistan ──
+  "Mohammed Al Owais":{c:63,g:0},"Nawaf Al Aqidi":{c:22,g:0},"Ahmed Al Kassar":{c:8,g:0},
+  "Abdulelah Al Amri":{c:41,g:1},"Hassan Tambakti":{c:51,g:0},"Jehad Thikri":{c:6,g:0},"Ali Lajami":{c:20,g:1},"Hassan Kadesh":{c:19,g:2},"Saud Abdulhamid":{c:53,g:1},"Mohammed Abu Al Shamat":{c:5,g:0},"Ali Majrashi":{c:20,g:0},"Moteb Al Harbi":{c:11,g:0},"Nawaf Boushal":{c:24,g:0},
+  "Mohammed Kanno":{c:75,g:8},"Abdullah Al Khaibari":{c:38,g:0},"Ziyad Al Johani":{c:11,g:0},"Nasser Al Dawsari":{c:42,g:0},"Musab Al Juwayr":{c:33,g:6},"Alaa Al Hajji":{c:1,g:0},"Salem Al Dawsari":{c:108,g:26},"Khalil Al Ghannam":{c:5,g:0},"Ayman Yahya":{c:25,g:0},
+  "Firas Al Buraikan":{c:69,g:15},"Saleh Al Shehri":{c:55,g:18},"Abdullah Al Hamdan":{c:48,g:11},
+
+  // ── Fransa ──
+  "Mike Maignan":{c:38,g:0},"Robin Risser":{c:0,g:0},"Brice Samba":{c:4,g:0},
+  "Lucas Digne":{c:56,g:0},"Malo Gusto":{c:9,g:0},"Lucas Hernández":{c:41,g:0},"Theo Hernández":{c:42,g:2},"Ibrahima Konaté":{c:27,g:0},"Jules Koundé":{c:46,g:0},"Maxence Lacroix":{c:2,g:0},"William Saliba":{c:31,g:0},"Dayot Upamecano":{c:36,g:2},
+  "N'Golo Kanté":{c:67,g:2},"Manu Koné":{c:12,g:0},"Adrien Rabiot":{c:57,g:7},"Aurélien Tchouaméni":{c:44,g:3},"Warren Zaïre-Emery":{c:10,g:1},
+  "Maghnes Akliouche":{c:7,g:1},"Bradley Barcola":{c:18,g:3},"Rayan Cherki":{c:5,g:1},"Ousmane Dembélé":{c:58,g:7},"Désiré Doué":{c:6,g:2},"Jean-Philippe Mateta":{c:3,g:2},"Kylian Mbappé":{c:96,g:56},"Michael Olise":{c:15,g:4},"Marcus Thuram":{c:33,g:3},
+
+  // ── Senegal ──
+  "Édouard Mendy":{c:56,g:0},"Mory Diaw":{c:5,g:0},"Yehvann Diouf":{c:2,g:0},
+  "Krépin Diatta":{c:60,g:2},"Antoine Mendy":{c:6,g:0},"Kalidou Koulibaly":{c:102,g:2},"El Hadji Malick Diouf":{c:19,g:1},"Mamadou Sarr":{c:7,g:0},"Moussa Niakhaté":{c:30,g:0},"Abdoulaye Seck":{c:22,g:4},"Ismail Jakobs":{c:29,g:0},
+  "Idrissa Gana Gueye":{c:130,g:7},"Pape Gueye":{c:41,g:5},"Lamine Camara":{c:32,g:7},"Habib Diarra":{c:20,g:4},"Pathé Ciss":{c:29,g:0},"Pape Matar Sarr":{c:39,g:4},"Bara Sapoko Ndiaye":{c:1,g:0},
+  "Sadio Mané":{c:127,g:55},"Ismaïla Sarr":{c:82,g:19},"Iliman Ndiaye":{c:39,g:4},"Assane Diao":{c:5,g:0},"Ibrahim Mbaye":{c:10,g:3},"Nicolas Jackson":{c:32,g:8},"Bamba Dieng":{c:22,g:2},"Cherif Ndiaye":{c:18,g:4},
+
+  // ── Irak ──
+  "Fahad Talib":{c:21,g:0},"Jalal Hassan":{c:100,g:0},"Ahmed Basil":{c:14,g:0},
+  "Hussein Ali":{c:25,g:1},"Manaf Younis":{c:32,g:1},"Zaid Tahseen":{c:26,g:1},"Rebin Sulaka":{c:54,g:1},"Akam Hashem":{c:12,g:1},"Merchas Doski":{c:30,g:0},"Ahmed Yahya":{c:19,g:0},"Zaid Ismail":{c:5,g:0},"Frans Putros":{c:26,g:0},"Mustafa Saadoon":{c:15,g:0},
+  "Amir Al-Ammari":{c:49,g:3},"Kevin Yakob":{c:7,g:0},"Zidane Iqbal":{c:23,g:2},"Aimar Sher":{c:6,g:0},"Ibrahim Bayesh":{c:74,g:8},"Ahmed Qasim":{c:1,g:0},"Youssef Amyn":{c:25,g:2},"Marko Farji":{c:10,g:0},
+  "Ali Jasim":{c:35,g:2},"Ali Al-Hamadi":{c:18,g:5},"Ali Yousef":{c:6,g:1},"Aymen Hussein":{c:93,g:33},"Mohanad Ali":{c:71,g:27},
+
+  // ── Norveç ──
+  "Ørjan Nyland":{c:69,g:0},"Egil Selvik":{c:6,g:0},"Sander Tangvik":{c:0,g:0},
+  "Julian Ryerson":{c:41,g:1},"Kristoffer Ajer":{c:50,g:2},"Leo Østigård":{c:36,g:1},"David Møller Wolfe":{c:20,g:1},"Marcus Pedersen":{c:31,g:0},"Torbjørn Heggem":{c:13,g:0},"Fredrik André Bjørkan":{c:19,g:1},"Henrik Falchener":{c:1,g:0},"Sondre Langås":{c:2,g:0},
+  "Martin Ødegaard":{c:67,g:4},"Sander Berge":{c:64,g:1},"Patrick Berg":{c:41,g:0},"Kristian Thorstvedt":{c:35,g:4},"Morten Thorsby":{c:30,g:0},"Thelo Aasgaard":{c:6,g:5},"Andreas Schjelderup":{c:10,g:1},"Jens Petter Hauge":{c:14,g:1},"Fredrik Aursnes":{c:20,g:1},"Oscar Bobb":{c:18,g:2},"Antonio Nusa":{c:22,g:7},
+  "Erling Haaland":{c:49,g:55},"Alexander Sørloth":{c:70,g:26},"Jørgen Strand Larsen":{c:26,g:4},
+
+  // ── Arjantin ──
+  "Emiliano Martínez":{c:59,g:0},"Gerónimo Rulli":{c:7,g:0},"Juan Musso":{c:3,g:0},
+  "Gonzalo Montiel":{c:38,g:2},"Nahuel Molina":{c:58,g:1},"Lisandro Martínez":{c:26,g:1},"Nicolás Otamendi":{c:130,g:8},"Leonardo Balerdi":{c:11,g:0},"Cristian Romero":{c:49,g:3},"Facundo Medina":{c:7,g:0},"Nicolás Tagliafico":{c:75,g:1},
+  "Leandro Paredes":{c:77,g:5},"Rodrigo De Paul":{c:85,g:2},"Exequiel Palacios":{c:38,g:0},"Enzo Fernández":{c:40,g:6},"Alexis Mac Allister":{c:44,g:6},"Giovani Lo Celso":{c:65,g:4},"Valentín Barco":{c:2,g:1},
+  "Lionel Messi":{c:198,g:116},"Nico Paz":{c:8,g:1},"Thiago Almada":{c:14,g:4},"Nicolás González":{c:50,g:6},"Giuliano Simeone":{c:11,g:1},"Lautaro Martínez":{c:75,g:36},"Jose Manuel López":{c:3,g:0},"Julián Álvarez":{c:51,g:14},
+
+  // ── Cezayir ──
+  "Oussama Benbot":{c:2,g:0},"Melvin Masstil":{c:1,g:0},"Luca Zidane":{c:6,g:0},
+  "Achraf Abada":{c:6,g:1},"Rayan Ait Nouri":{c:27,g:0},"Zinedine Belaid":{c:9,g:1},"Rafik Belghali":{c:11,g:1},"Ramy Bensebaini":{c:81,g:7},"Samir Chergui":{c:4,g:0},"Jaouen Hadjam":{c:16,g:3},"Aissa Mandi":{c:116,g:7},"Mohamed Amine Tougai":{c:28,g:2},
+  "Houssem Aouar":{c:19,g:6},"Nabil Bentaleb":{c:58,g:6},"Hicham Boudaoui":{c:32,g:0},"Fares Chaibi":{c:28,g:3},"Ibrahim Maza":{c:15,g:2},"Yassine Titraoui":{c:5,g:0},"Ramiz Zerrouki":{c:51,g:3},
+  "Mohamed Amine Amoura":{c:44,g:19},"Nadir Benbouali":{c:2,g:1},"Adil Boulbina":{c:10,g:6},"Fares Ghedjemis":{c:1,g:1},"Amine Gouiri":{c:21,g:8},"Riyad Mahrez":{c:113,g:38},"Anis Hadj Moussa":{c:13,g:0},
+
+  // ── Avusturya ──
+  "Alexander Schlager":{c:25,g:0},"Florian Wiegele":{c:1,g:0},"Patrick Pentz":{c:18,g:0},
+  "David Affengruber":{c:1,g:0},"Kevin Danso":{c:31,g:0},"Stefan Posch":{c:51,g:5},"David Alaba":{c:112,g:15},"Philipp Lienhart":{c:40,g:3},"Philipp Mwene":{c:29,g:0},"Alexander Prass":{c:18,g:0},"Marco Friedl":{c:10,g:0},"Michael Svoboda":{c:4,g:0},
+  "Xaver Schlager":{c:50,g:4},"Nicolas Seiwald":{c:46,g:1},"Marcel Sabitzer":{c:97,g:25},"Florian Grillitsch":{c:58,g:1},"Carney Chukwuemeka":{c:2,g:1},"Romano Schmid":{c:33,g:3},"Christoph Baumgartner":{c:58,g:19},"Konrad Laimer":{c:56,g:7},"Patrick Wimmer":{c:30,g:1},"Paul Wanner":{c:2,g:0},"Alessandro Schopf":{c:35,g:6},
+  "Marko Arnautovic":{c:132,g:47},"Michael Gregoritsch":{c:74,g:24},"Sasa Kalajdzic":{c:21,g:4},
+
+  // ── Ürdün ──
+  "Yazid Abulaila":{c:75,g:0},"Abdallah Al-Fakhouri":{c:11,g:0},"Nour Bani Attiah":{c:4,g:0},
+  "Ihsan Haddad":{c:91,g:2},"Saed Al-Rosan":{c:20,g:2},"Mohammad Abualnadi":{c:17,g:0},"Husam Abu Dahab":{c:17,g:0},"Mohammed Abu Hashish":{c:55,g:1},"Yazan Al-Arab":{c:79,g:3},"Anas Badawi":{c:1,g:0},"Abdullah Nasib":{c:64,g:3},"Saleem Obaid":{c:10,g:0},
+  "Mohammed Al-Dawoud":{c:12,g:1},"Nizar Al-Rashdan":{c:46,g:4},"Noor Al-Rawabdeh":{c:67,g:3},"Rajaei Ayed":{c:72,g:0},"Amer Jamous":{c:18,g:1},"Ibrahim Sadeh":{c:56,g:3},"Mohannad Abu Taha":{c:28,g:1},
+  "Mohammed Abu Zrayq":{c:40,g:5},"Mousa Al-Tamari":{c:91,g:24},"Ali Azaizeh":{c:3,g:0},"Odeh Al-Fakhouri":{c:9,g:1},"Ali Olwan":{c:65,g:29},"Ibrahim Sabra":{c:9,g:1},"Mahmoud Al-Mardi":{c:88,g:9},
+
+  // ── Portekiz ──
+  "Diogo Costa":{c:42,g:0},"José Sá":{c:4,g:0},"Rui Silva":{c:2,g:0},
+  "Rúben Dias":{c:74,g:3},"João Cancelo":{c:66,g:12},"Diogo Dalot":{c:33,g:3},"Nuno Mendes":{c:43,g:1},"Nélson Semedo":{c:48,g:0},"Matheus Nunes":{c:19,g:2},"Gonçalo Inacio":{c:20,g:2},"Renato Veiga":{c:11,g:1},"Tomás Araújo":{c:3,g:0},
+  "Bruno Fernandes":{c:87,g:28},"Bernardo Silva":{c:107,g:14},"Vitinha":{c:37,g:0},"João Neves":{c:21,g:3},"Rúben Neves":{c:65,g:1},"Samú Costa":{c:4,g:0},
+  "Cristiano Ronaldo":{c:226,g:143},"Rafael Leão":{c:43,g:5},"João Félix":{c:52,g:12},"Gonçalo Ramos":{c:24,g:10},"Pedro Neto":{c:23,g:2},"Francisco Conceição":{c:15,g:3},"Gonçalo Guedes":{c:33,g:7},"Francisco Trincão":{c:17,g:3},
+
+  // ── Kongo Demokratik Cumhuriyeti ──
+  "Lionel Mpasi":{c:27,g:0},"Timothy Fayulu":{c:3,g:0},"Matthieu Epolo":{c:1,g:0},
+  "Chancel Mbemba":{c:107,g:7},"Axel Tuanzebe":{c:12,g:1},"Arthur Masuaku":{c:44,g:4},"Gedeon Kalulu":{c:27,g:0},"Joris Kayembe":{c:24,g:0},"Aaron Wan-Bissaka":{c:10,g:0},"Aaron Tshibola":{c:16,g:1},"Steve Kapuadi":{c:3,g:0},"Dylan Batubinsika":{c:14,g:1},
+  "Noah Sadiki":{c:18,g:0},"Charles Pickel":{c:33,g:1},"Edo Kayembe":{c:41,g:2},"Samuel Moutoussamy":{c:56,g:0},"Ngal'ayel Mukau":{c:12,g:0},"Nathanaël Mbuku":{c:17,g:2},"Meschak Elia":{c:68,g:12},"Brian Cipenga":{c:7,g:0},"Gaël Kakuta":{c:30,g:5},"Théo Bongonda":{c:37,g:7},
+  "Simon Banza":{c:14,g:2},"Yoane Wissa":{c:36,g:9},"Fiston Mayele":{c:37,g:6},"Cédric Bakambu":{c:68,g:21},
+
+  // ── Özbekistan ──
+  "Utkir Yusupov":{c:39,g:0},"Botirali Ergashev":{c:2,g:0},"Abduvokhid Nematov":{c:7,g:0},
+  "Avazbek Ulmasaliev":{c:0,g:0},"Jakhongir Urozov":{c:2,g:0},"Rustamjon Ashurmatov":{c:47,g:1},"Umarbek Eshmurodov":{c:29,g:0},"Abdukodir Khusanov":{c:25,g:0},"Abdulla Abdullaev":{c:16,g:0},"Farrukh Sayfiev":{c:44,g:1},"Khojiakbar Alijonov":{c:40,g:2},"Sherzod Nasrullaev":{c:29,g:2},"Behruz Kerimov":{c:2,g:0},
+  "Sherzod Esanov":{c:0,g:0},"Umarali Rakhmonaliev":{c:1,g:0},"Akmal Mozgovoy":{c:23,g:1},"Otabek Shukurov":{c:82,g:9},"Jamshid Iskanderov":{c:37,g:4},"Azizjon Ganiev":{c:18,g:0},"Abbosek Fayzullaev":{c:30,g:8},"Jaloliddin Masharipov":{c:74,g:12},"Dostonbek Khamdamov":{c:33,g:5},"Oston Urunov":{c:40,g:10},
+  "Azizbek Amonov":{c:11,g:2},"Igor Sergeev":{c:81,g:24},"Eldor Shomurodov":{c:90,g:44},
+
+  // ── Kolombiya ──
+  "David Ospina":{c:129,g:0},"Álvaro Montero":{c:11,g:0},"Camilo Vargas":{c:40,g:0},
+  "Daniel Muñoz":{c:44,g:3},"Jhon Lucumí":{c:35,g:1},"Santiago Arias":{c:66,g:0},"Davinson Sánchez":{c:77,g:3},"Johan Mojica":{c:43,g:1},"Yerry Mina":{c:52,g:8},"Willer Ditta":{c:3,g:0},"Deiver Machado":{c:14,g:0},
+  "Jorge Carrascal":{c:22,g:2},"Kevin Castaño":{c:24,g:0},"Gustavo Puerta":{c:4,g:1},"Juan Fernando Quintero":{c:47,g:6},"Juan Portilla":{c:8,g:0},"Jefferson Lerma":{c:64,g:5},"Richard Ríos":{c:30,g:2},"Jhon Arias":{c:36,g:4},"James Rodríguez":{c:124,g:31},"Jaminton Campaz":{c:9,g:1},
+  "Luis Díaz":{c:72,g:21},"Jhon Córdoba":{c:21,g:6},"Luis Suárez":{c:10,g:4},"Andrés Gómez":{c:6,g:2},"Cucho Hernández":{c:7,g:2},
+
+  // ── İngiltere ──
+  "Jordan Pickford":{c:82,g:0},"Dean Henderson":{c:4,g:0},"James Trafford":{c:1,g:0},
+  "Reece James":{c:22,g:1},"Ezri Konsa":{c:18,g:1},"Jarell Quansah":{c:1,g:0},"John Stones":{c:87,g:3},"Marc Guéhi":{c:27,g:1},"Dan Burn":{c:6,g:0},"Nico O'Reilly":{c:3,g:0},"Djed Spence":{c:4,g:0},"Tino Livramento":{c:5,g:0},
+  "Declan Rice":{c:72,g:6},"Elliot Anderson":{c:7,g:0},"Kobbie Mainoo":{c:12,g:0},"Jordan Henderson":{c:89,g:3},"Morgan Rogers":{c:13,g:1},"Jude Bellingham":{c:46,g:6},"Eberechi Eze":{c:16,g:3},
+  "Harry Kane":{c:112,g:78},"Ivan Toney":{c:7,g:1},"Ollie Watkins":{c:20,g:6},"Bukayo Saka":{c:48,g:14},"Marcus Rashford":{c:70,g:18},"Anthony Gordon":{c:17,g:2},"Noni Madueke":{c:10,g:1},
+
+  // ── Hırvatistan ──
+  "Dominik Livakovic":{c:73,g:0},"Dominik Kotarski":{c:3,g:0},"Ivor Pandur":{c:0,g:0},
+  "Josko Gvardiol":{c:46,g:4},"Duje Caleta-Car":{c:38,g:1},"Josip Sutalo":{c:31,g:0},"Josip Stanisic":{c:29,g:0},"Marin Pongracic":{c:18,g:0},"Martin Erlic":{c:12,g:1},"Luka Vuskovic":{c:4,g:1},
+  "Luka Modric":{c:196,g:28},"Mateo Kovacic":{c:111,g:5},"Mario Pasalic":{c:83,g:11},"Nikola Vlasic":{c:61,g:10},"Luka Sucic":{c:19,g:1},"Martin Baturina":{c:17,g:1},"Kristijan Jakic":{c:16,g:2},"Petar Sucic":{c:15,g:1},"Nikola Moro":{c:9,g:0},"Toni Fruk":{c:7,g:1},
+  "Ivan Perisic":{c:152,g:38},"Andrej Kramaric":{c:114,g:36},"Ante Budimir":{c:36,g:6},"Marco Pasalic":{c:13,g:1},"Petar Musa":{c:10,g:1},"Igor Matanovic":{c:8,g:2},
+
+  // ── Gana ──
+  "Benjamin Asare":{c:10,g:0},"Lawrence Ati-Zigi":{c:28,g:0},"Joseph Anang":{c:1,g:0},
+  "Baba Abdul Rahman":{c:52,g:1},"Gideon Mensah":{c:39,g:0},"Marvin Senaya":{c:1,g:0},"Alidu Seidu":{c:23,g:1},"Abdul Mumin":{c:4,g:0},"Jerome Opoku":{c:10,g:1},"Jonas Adjetey":{c:9,g:0},"Kojo Oppong Peprah":{c:4,g:0},"Derrick Luckassen":{c:1,g:0},
+  "Elisha Owusu":{c:19,g:0},"Thomas Partey":{c:56,g:15},"Kwasi Sibo":{c:7,g:0},"Augustine Boakye":{c:0,g:0},"Caleb Yirenkyi":{c:10,g:0},"Abdul Fatawu Issahaku":{c:27,g:3},
+  "Kamal Deen Sulemana":{c:27,g:1},"Christopher Bonsu Baah":{c:8,g:0},"Ernest Nuamah":{c:18,g:4},"Antoine Semenyo":{c:34,g:3},"Brandon Thomas-Asante":{c:7,g:1},"Prince Kwabena Adu":{c:4,g:0},"Iñaki Williams":{c:25,g:2},"Jordan Ayew":{c:117,g:33},
+
+  // ── Panama ──
+  "Luis Mejía":{c:56,g:0},"César Samudio":{c:4,g:0},
+  "César Blackman":{c:38,g:3},"Jorge Gutiérrez":{c:17,g:0},"Amir Murillo":{c:92,g:9},"Fidel Escobar":{c:97,g:4},"Andrés Andrade":{c:48,g:1},"Edgardo Fariña":{c:16,g:0},"José Córdoba":{c:31,g:1},"Éric Davis":{c:105,g:9},"Jiovany Ramos":{c:21,g:1},"Roderick Miller":{c:49,g:2},
+  "Aníbal Godoy":{c:159,g:4},"Adalberto Carrasquilla":{c:73,g:3},"Carlos Harvey":{c:26,g:3},"Cristian Martínez":{c:64,g:2},"José Luis Rodríguez":{c:68,g:8},"César Yanis":{c:55,g:5},"Yoel Bárcenas":{c:102,g:10},"Alberto Quintero":{c:140,g:7},"Azarias Londoño":{c:10,g:0},
+  "Ismael Díaz":{c:55,g:17},"Cecilio Waterman":{c:53,g:14},"José Fajardo":{c:66,g:17},"Tomás Rodríguez":{c:12,g:3},
 };
-
-// ════════════════════════════════════════════════
-//  SQUADS & DATA 
-// ════════════════════════════════════════════════
-const RAW_SQUADS = {
-  "Meksika": { "KL": ["Carlos Acevedo", "Guillermo Ochoa", "Raúl Rangel"], "DF": ["Jesús Gallardo", "Israel Reyes", "César Montes", "Jorge Sánchez", "Johan Vásquez", "Mateo Chávez"], "OS": ["Gilberto Mora", "Edson Álvarez", "Orbelín Pineda", "Luis Romo", "Brian Gutiérrez", "Obed Vargas", "César Huerta", "Luis Chavez", "Erik Lira", "Álvaro Fidalgo", "Roberto Alvarado"], "FV": ["Armando González", "Raúl Jiménez", "Julián Quiñones", "Santiago Gimenez", "Guillermo Martínez", "Alexis Vega"] },
-  "Güney Afrika": { "KL": ["Ronwen Williams", "Ricardo Goss", "Sipho Chaine"], "DF": ["Khuliso Mudau", "Nkosinathi Sibisi", "Ime Okon", "Khulumani Ndamane", "Aubrey Modiba", "Samukelo Kabini", "Thabang Matuludi", "Olwethu Makhanya", "Kamgogelo Sebelebele", "Bradley Cross", "Mbekezeli Mbokazi"], "OS": ["Teboho Mokoena", "Thalente Mbatha", "Yaya Sithole", "Jayden Adams"], "FV": ["Oswin Appollis", "Iqraam Rayners", "Tshepang Moremi", "Relebohile Mofokeng", "Evidence Makgopa", "Themba Zwane", "Lyle Foster", "Thapelo Maseko"] },
-  "Güney Kore": { "KL": ["Jo Hyun-Woo", "Kim Seung-Gyu", "Song Bum-Keun"], "DF": ["Kim Min-Jae", "Jo Yu-Min", "Lee Han-Beom", "Kim Tae-Hyun", "Park Jin-Seop", "Lee Ki-Hyeok", "Lee Tae-Seok", "Seol Young-Woo", "Jens Castrop", "Kim Moon-Hwan"], "OS": ["Yang Hyun-Jun", "Paik Seung-Ho", "Hwang In-Beom", "Kim Jin-Kyu", "Bae Jun-Ho", "Um Ji-Sung", "Hwang Hee-Chan", "Lee Dong-Gyeong", "Lee Jae-Sung", "Lee Kang-In"], "FV": ["Oh Hyun-Kyu", "Son Heung-Min", "Cho Kyu-Sung"] },
-  "Çekya": { "KL": ["Lukas Hornicek", "Jan Koutny", "Jindrich Stanek"], "DF": ["Vladimír Coufal", "David Douděra", "Tomáš Holeš", "Robin Hranáč", "Štěpán Chaloupek", "David Jurásek", "Ladislav Krejčí", "Jaroslav Zelený", "David Zima"], "OS": ["Lukás Cerv", "Vladimir Darida", "Lukás Provod", "Michal Sadílek", "Hugo Sochůrek", "Alexandr Sojka", "Tomáš Souček"], "FV": ["Adam Hložek", "Tomáš Chorý", "Mojmír Chytil", "Jan Kuchta", "Patrik Schick", "Matej Vydra", "Denis Višinský"] },
-  "Kanada": { "KL": ["Dayne St. Clair", "Maxime Crépeau", "Owen Goodman"], "DF": ["Moïse Bombito", "Derek Cornelius", "Alphonso Davies", "Luc De Fougerolles", "Alistair Johnston", "Alfie Jones", "Richie Laryea", "Niko Sigur", "Joel Waterman"], "OS": ["Ali Ahmed", "Tajon Buchanan", "Mathieu Choinière", "Stephen Eustáquio", "Marcelo Flores", "Ismaël Koné", "Liam Millar", "Jonathan Osorio", "Nathan Saliba", "Jacob Shaffelburg"], "FV": ["Jonathan David", "Promise David", "Cyle Larin", "Tani Oluwaseyi"] },
-  "Bosna Hersek": { "KL": ["Nikola Vasilj", "Martin Zlomislic", "Osman Hadzikic"], "DF": ["Sead Kolasinac", "Amar Dedic", "Nihad Mujakic", "Nikola Katic", "Tarık Muharemovic", "Stjepan Radeljic", "Dennis Hadzikadunic", "Nidal Çelik"], "OS": ["Amir Hadziahmetovic", "Ivan Sunjic", "Ivan Basic", "Dzenis Burnic", "Ermin Mahmic", "Benjamin Tahirovic", "Amar Memic", "Armin Gigovic", "Kerim Alajbegovic", "Esmir Bajraktareviç"], "FV": ["Ermedin Demirovic", "Jovo Lukic", "Samed Bazdar", "Haris Tabakovic", "Edin Dzeko"] },
-  "Katar": { "KL": ["Salah Zakaria", "Meshaal Barsham", "Mahmoud Abunada"], "DF": ["Boualem Khoukhi", "Pedro Miguel", "Sultan Al Brake", "Al-Hashmi Al-Hussain", "Ayoub Al-Alawi", "Issa Laye", "Lucas Mendes", "Homam Al-Amin"], "OS": ["Ahmed Fathi", "Jassim Gaber", "Assim Madibo", "Abdulaziz Hatem", "Karim Boudiaf", "Mohammed Mannai"], "FV": ["Almoez Ali", "Akram Afif", "Tahsin Mohammed", "Edmílson Junior", "Ahmed Al-Ganehi", "Ahmed Alaa", "Hassan Al-Haydos", "Mohammed Muntari", "Yusuf Abdurisag"] },
-  "İsviçre": { "KL": ["Gregor Kobel", "Yvon Mvogo", "Marvin Keller"], "DF": ["Manuel Akanji", "Nico Elvedi", "Ricardo Rodriguez", "Silvan Widmer", "Miro Muheim", "Aurèle Amenda", "Eray Cömert", "Luca Jaquez"], "OS": ["Granit Xhaka", "Johan Manzambi", "Remo Freuler", "Denis Zakaria", "Ardon Jashari", "Djibril Sow", "Christian Fassnacht", "Michel Aebischer", "Fabian Rieder", "Rubén Vargas"], "FV": ["Breel Embolo", "Noah Okafor", "Dan Ndoye", "Zeki Amdouni", "Cedric Itten"] },
-  "Brezilya": { "KL": ["Alisson", "Éderson", "Weverton"], "DF": ["Alex Sandro", "Bremer", "Danilo", "Douglas Santos", "Gabriel Magalhäes", "Léo Pereira", "Marquinhos", "Roger Ibañez", "Wesley"], "OS": ["Bruno Guimarão", "Casemiro", "Danilo Santos", "Fabinho", "Lucas Paquetá"], "FV": ["Endrick", "Gabriel Martinelli", "Igor Thiago", "Luiz Henrique", "Matheus Cunha", "Neymar", "Raphinha", "Rayan", "Vinícius Júnior"] },
-  "Fas": { "KL": ["Yassine Bounou", "Munir El Kajoui", "Reda Tagnaouti"], "DF": ["Noussair Mazraoui", "Anass Salah-Eddine", "Youssef Belammari", "Achraf Hakimi", "Zakaria El Ouahdi", "Chadi Riad", "Nayef Aguerd", "Redouane Halhal", "Issa Diop"], "OS": ["Samir El Mourabet", "Ayyoub Bouaddi", "Neil El Aynaoui", "Sofyan Amrabat", "Azzedine Ounahi", "Bilal El Khannouss", "Ismael Saibari"], "FV": ["Abde Ezzalzouli", "Chemsdine Talbi", "Soufiane Rahimi", "Ayoub El Kaabi", "Brahim Díaz", "Gessime Yassine", "Ayoube Amaimouni"] },
-  "Haiti": { "KL": ["Johny Placide", "Alexandre Pierre", "Josue Duverger"], "DF": ["Carlens Arcus", "Wilguens Paugain", "Duke Lacroix", "Martin Expérience", "Jean-Kévin Duverne", "Ricardo Adé", "Hannes Delcroix", "Keeto Thermoncy"], "OS": ["Carl Fred Sainté", "Leverton Pierre", "Danley Jean Jacques", "Jean-Ricner Bellegarde", "Woodensky Pierre", "Dominique Simon"], "FV": ["Don Deedson Louicius", "Josué Casimir", "Derrick Etienne", "Ruben Providence", "Duckens Nazon", "Frantzdy Pierrot", "Wilson Isidor", "Yassin Fortuné", "Lenny Joseph"] },
-  "İskoçya": { "KL": ["Craig Gordon", "Angus Gunn", "Liam Kelly"], "DF": ["Grant Hanley", "Jack Hendry", "Aaron Hickey", "Dom Hyam", "Scott McKenna", "Nathan Patterson", "Anthony Ralston", "Andy Robertson", "John Souttar", "Kieran Tierney"], "OS": ["Ryan Christie", "Finlay Curtis", "Lewis Ferguson", "Ben Gannon-Doak", "Billy Gilmour", "John McGinn", "Kenny McLean", "Scott McTominay"], "FV": ["Ché Adams", "Lyndon Dykes", "George Hirst", "Lawrence Shankland", "Ross Stewart"] },
-  "ABD": { "KL": ["Chris Brady", "Matt Freese", "Matt Turner"], "DF": ["Max Arfsten", "Sergiño Dest", "Alex Freeman", "Mark McKenzie", "Tim Ream", "Chris Richards", "Antonee Robinson", "Miles Robinson", "Joe Scally", "Auston Trusty"], "OS": ["Tyler Adams", "Sebastian Berhalter", "Weston McKennie", "Cristian Roldan", "Brenden Aaronson", "Malik Tillman", "Tim Weah", "Alejandro Zendejas"], "FV": ["Christian Pulisic", "Gio Reyna", "Folarin Balogun", "Ricardo Pepi", "Haji Wright"] },
-  "Avustralya": { "KL": ["Mathew Ryan", "Paul Izzo", "Patrick Beach"], "DF": ["Jordan Bos", "Aziz Behich", "Harry Souttar", "Alessandro Circati", "Lucas Herrington", "Cameron Burgess", "Kai Trewin", "Milos Degenek", "Jason Geria", "Jacob Italiano"], "OS": ["Jackson Irvine", "Aiden O'Neill", "Paul Okon Jr", "Cameron Devlin"], "FV": ["Connor Metcalfe", "Mathew Leckie", "Nishan Velupillay", "Cristian Volpato", "Nestory Irankunda", "Awer Mabil", "Ajdin Hrustic", "Mohamed Toure", "Tete Yengi"] },
-  "Paraguay": { "KL": ["Roberto Fernández", "Orlando Gill", "Gastón Olveira"], "DF": ["Gustavo Gómez", "Júnior Alonso", "Fabián Balbuena", "Omar Alderete", "Juan Caceres", "Jose Canale", "Alexandro Maidana", "Gustavo Velázquez"], "OS": ["Miguel Almirón", "Kaku", "Andrés Cubas", "Ramón Sosa", "Diego Gómez", "Damián Bobadilla", "Braian Ojeda", "Matías Galarza", "Maurício"], "FV": ["Antonio Sanabria", "Julio Enciso", "Gabriel Ávalos", "Alex Arce", "Isidro Pitta", "Gustavo Caballero"] },
-  "Türkiye": { "KL": ["Uğurcan Çakır", "Mert Günok", "Altay Bayındır"], "DF": ["Merih Demiral", "Zeki Çelik", "Çağlar Soyuncu", "Mert Müldür", "Ferdi Kadıoğlu", "Ozan Kabak", "Abdulkerim Bardakçı", "Eren Elmalı", "Samet Akaydin"], "OS": ["Hakan Calhanoglou", "Kaan Ayhan", "Orkun Kökçü", "İsmail Yüksek", "Salih Özcan"], "FV": ["Kerem Aktürkoğlu", "İrfan Can Kahveci", "Barış Apler Yılmaz", "Arda Güler", "Kenan Yıldız", "Yunus Akgün", "Oğuz Aydın", "Deniz Gül", "Can Uzun"] },
-  "Almanya": { "KL": ["Oliver Baumann", "Manuel Neuer", "Alexander Nübel"], "DF": ["Waldemar Anton", "Nathaniel Brown", "David Raum", "Antonio Rüdiger", "Nico Schlotterbeck", "Jonathan Tah", "Malick Thiaw"], "OS": ["Pascal Gross", "Joshua Kimmich", "Felix Nmecha", "Aleksandar Pavlovic", "Angelo Stiller", "Leon Goretzka", "Florian Wirtz", "Jamie Leweling"], "FV": ["Maximilian Beier", "Kai Havertz", "Lennart Karl", "Jamal Musiala", "Leroy Sané", "Deniz Undav", "Nick Woltemade"] },
-  "Curaçao": { "KL": ["Eloy Room", "Tyrick Bodak", "Trevor Doornbusch"], "DF": ["Riechedly Bazoer", "Joshua Brenet", "Roshon van Eijma", "Sherel Floranus", "Deveron Fonville", "Jurien Gaari", "Armando Obispo", "Shurandy Sambo"], "OS": ["Juninho Bacuna", "Leandro Bacuna", "Livano Comenencia", "Kevin Felida", "Ar'jany Martha", "Tyrese Noslin", "Godfried Roemeratoe"], "FV": ["Jeremy Antonisse", "Tahith Chong", "Kenji Gorre", "Sontje Hansen", "Gervane Kastaneer", "Brandley Kuwas", "Jurgen Locadia", "Jearl Margaritha"] },
-  "Fildişi Sahili": { "KL": ["Yahia Fofana", "Mohamed Koné", "Alban Lafont"], "DF": ["Emmanuel Agbadou", "Clément Akpa", "Ousmane Diomande", "Guela Doué", "Ghislain Konan", "Odilon Kossounou", "Evan Ndicka", "Wilfried Singo"], "OS": ["Seko Fofana", "Parfait Guiagon", "Franck Kessié", "Christ Inao Oulaï", "Ibrahim Sangaré", "Jean Michaël Seri"], "FV": ["Simon Adingra", "Ange-Yoan Bonny", "Amad Diallo", "Oumar Diakité", "Yan Diomande", "Evann Guessand", "Nicolas Pépé", "Bazoumana Touré", "Elye Wahi"] },
-  "Ekvador": { "KL": ["Hernán Galíndez", "Moisés Ramírez", "Gonzalo Valle"], "DF": ["Willian Pacho", "Piero Hincapié", "Joel Ordóñez", "Félix Torres", "Pervis Estupiñán", "Yaimar Medina", "Ángelo Preciado", "Jackson Porozo"], "OS": ["Alan Minda", "Moisés Caicedo", "Jordy Alcivar", "Denil Castillo", "John Yeboah", "Alan Franco", "Pedro Vite", "Kendry Páez", "Nilson Angulo", "Gonzalo Plata"], "FV": ["Kevin Rodríguez", "Anthony Valencia", "Enner Valencia", "Jordy Caicedo", "Jeremy Arévalo"] },
-  "Hollanda": { "KL": ["Mark Flekken", "Robin Roefs", "Bart Verbruggen"], "DF": ["Nathan Aké", "Denzel Dumfries", "Jorrel Hato", "Jurriën Timber", "Jan Paul van Hecke", "Micky van de Ven", "Virgil van Dijk"], "OS": ["Frenkie de Jong", "Marten de Roon", "Ryan Gravenberch", "Teun Koopmeiners", "Tijjani Reijnders", "Guus Til", "Quinten Timber", "Mats Wieffer"], "FV": ["Brian Brobbey", "Memphis Depay", "Cody Gakpo", "Justin Kluivert", "Noa Lang", "Donyell Malen", "Crysencio Summerville", "Wout Weghorst"] },
-  "Japonya": { "KL": ["Zion Suzuki", "Keisuke Osako", "Tomoki Hayakawa"], "DF": ["Yūto Nagatomo", "Shogo Taniguchi", "Ko Itakura", "Tsuyoshi Watanabe", "Takehiro Tomiyasu", "Hiroki Ito", "Ayumu Seko", "Yukinari Sugawara"], "OS": ["Junnosuke Suzuki", "Wataru Endo", "Junya Ito", "Daichi Kamada", "Ritsu Doan", "Ao Tanaka", "Keito Nakamura", "Kaishu Sano", "Takefusa Kubo", "Yuito Suzuki"], "FV": ["Koki Ogawa", "Daizen Maeda", "Ayase Ueda", "Kento Shiogai", "Keisuke Goto"] },
-  "İsveç": { "KL": ["Viktor Johansson", "Kristoffer Nordfeldt", "Jacob Widell Zetterstrom"], "DF": ["Hjalmar Ekdal", "Gabriel Gudmundsson", "Isak Hien", "Emil Holm", "Gustaf Lagerbielke", "Victor Lindelöf", "Erik Smith", "Carl Starfelt", "Elliot Stroud", "Daniel Svensson"], "OS": ["Taha Ali", "Yasin Ayari", "Lucas Bergvall", "Jesper Karlström", "Ken Sema", "Mattias Svanberg", "Besfort Zeneli"], "FV": ["Alexander Bernhardsson", "Anthony Elanga", "Viktor Gyökeres", "Alexander Isak", "Gustaf Nilsson", "Benjamin Nygren"] },
-  "Tunus": { "KL": ["Aymen Dahmen", "Sabri Ben Hessen", "Abdelmouhib Chamakh"], "DF": ["Montassar Talbi", "Dylan Bronn", "Omar Rekik", "Yan Valery", "Ali Abdi", "Moutaz Neffati", "Raed Chikhaoui", "Adam Arous", "Mohamed Amine Ben Hamida"], "OS": ["Ellyes Skhiri", "Hannibal Mejbri", "Anis Ben Slimane", "Hadj Mahmoud", "Rani Khedira", "Mortadha Ben Ouanes"], "FV": ["Elias Achouri", "Ismaël Gharbi", "Elias Saad", "Sebastian Tounekti", "Firas Chaouat", "Khalil Ayari", "Hazem Mastouri", "Rayan Elloumi"] },
-  "Belçika": { "KL": ["Thibaut Courtois", "Senne Lammens", "Mike Penders"], "DF": ["Timothy Castagne", "Zeno Debast", "Maxim De Cuyper", "Koni De Winter", "Brandon Mechele", "Thomas Meunier", "Nathan Ngoy", "Joaquin Seys", "Arthur Theate"], "OS": ["Kevin De Bruyne", "Amadou Onana", "Nicolas Raskin", "Youri Tielemans", "Hans Vanaken", "Axel Witsel"], "FV": ["Charles De Ketelaere", "Jérémy Doku", "Matias Fernandez-Pardo", "Romelu Lukaku", "Dodi Lukebakio", "Diego Moreira", "Alexis Saelemaekers", "Leandro Trossard"] },
-  "Mısır": { "KL": ["Mohamed El Shenawy", "Mostafa Shobeir", "El Mahdy Soliman", "Mohamed Alaa"], "DF": ["Mohamed Hany", "Tarek Alaa", "Hamdy Fathy", "Ramy Rabia", "Yasser Ibrahim", "Hossam Abdelmaguid", "Mohamed Abdelmonem", "Ahmed Fatouh", "Karim Hafez"], "OS": ["Marwan Attia", "Mohanad Lasheen", "Nabil Emad", "Mahmoud Sabre", "Ahmed Zizo", "Emam Ashour", "Mostafa Ziko", "Mahmoud Trezeguet", "Ibrahim Adel", "Haissem Hassan"], "FV": ["Omar Marmoush", "Mohamed Salah", "Hamza Abdelkarim"] },
-  "İran": { "KL": ["Alireza Beiranvand", "Hossein Hosseini", "Payam Niazmand"], "DF": ["Danial Eiri", "Ehsan Hajsafi", "Saleh Hardani", "Hossein Kanaani", "Shoka Khalilzadeh", "Milad Mohammadi", "Ali Nemati Omid Noorafkan", "Ramin Rezaeian"], "OS": ["Rouzbeh Cheshmi", "Saeid Ezatolahi", "Mehdi Ghaedi", "Saman Ghoddos", "Mohammad Ghorbani", "Alireza Jahanbakhsh", "Mohammad Mohebi", "Amir Mohammad Razzaghinia", "Mehdi Torabi", "Aria Yousefi"], "FV": ["Ali Alipour", "Dennis Dargahi", "Amirhossein Hosseinzadeh", "Amirhossein Mahmoudi", "Mehdi Taremi"] },
-  "Yeni Zelanda": { "KL": ["Max Crocombe", "Alex Paulsen", "Michael Woud"], "DF": ["Tim Payne", "Francis De Vries", "Tyler Bindon", "Michael Boxall", "Liberato Cacace", "Nando Pijnaker", "Finn Surman", "Callan Elliot", "Tommy Smith"], "OS": ["Joe Bell", "Matt Garbett", "Marko Stamenic", "Sarpreet Singh", "Alex Rufer", "Ryan Thomas"], "FV": ["Chris Wood", "Eli Just", "Kosta Barbarouses", "Ben Waine", "Ben Old", "Callum McCowatt", "Jesse Randall", "Lachlan Bayliss"] },
-  "İspanya": { "KL": ["Unai Simón", "David Raya", "Joan García"], "DF": ["Marc Cucurella", "Pau Cubarsí", "Aymeric Laporte", "Álex Grimaldo", "Pedro Porro", "Eric García", "Marcos Llorente", "Marc Pubill"], "OS": ["Gavi", "Rodri", "Pedri", "Martín Zubimendi", "Fabián Ruiz", "Álex Baena", "Mikel Merino"], "FV": ["Lamine Yamal", "Nico Williams", "Dani Olmo", "Ferran Torres", "Mikel Oyarzabal", "Yéremy Pino", "Borja Iglesias", "Víctor Muñoz"] },
-  "Yeşil Burun Adaları": { "KL": ["Vozinha", "Marcio Rosa", "CJ dos Santos"], "DF": ["Steven Moreira", "Wagner Pina", "Joao Paulo", "Sidny Lopes Cabral", "Logan Costa", "Pico", "Kelvin Pires", "Stopira", "Diney"], "OS": ["Jamiro Monteiro", "Telmo Arcanjo", "Yannick Semedo", "Laros Duarte", "Deroy Duarte", "Kevin Pina"], "FV": ["Ryan Mendes", "Willy Semedo", "Garry Rodrigues", "Jovane Cabral", "Nuno da Costa", "Dailon Livramento", "Gilson Benchimol", "Helio Varela"] },
-  "Uruguay": { "KL": ["Fernando Muslera", "Sergio Rochet", "Santiago Mele"], "DF": ["Ronald Araújo", "José María Giménez", "Santiago Bueno", "Sebastián Cáceres", "Mathías Olivera", "Guillermo Varela", "Matías Viña", "Joaquín Piquerez", "Juan Manuel Sanabria"], "OS": ["Federico Valverde", "Rodrigo Bentancur", "Manuel Ugarte", "Emiliano Martínez", "Rodrigo Zalazar", "Giorgian De Arrascaeta", "Nicolás De La Cruz", "Agustín Canobbio", "Maximiliano Araújo", "Brian Rodríguez", "Facundo Pellistri"], "FV": ["Darwin Núñez", "Federico Viñas", "Rodrigo Aguirre"] },
-  "Suudi Arabistan": { "KL": ["Mohammed Al Owais", "Nawaf Al Aqidi", "Ahmed Al Kassar"], "DF": ["Abdulelah Al Amri", "Hassan Tambakti", "Jehad Thikri", "Ali Lajami", "Hassan Kadesh", "Saud Abdulhamid", "Mohammed Abu Al Shamat", "Ali Majrashi", "Moteb Al Harbi", "Nawaf Boushal", "Sultan El-Ghannam"], "OS": ["Mohammed Kanno", "Abdullah Al Khaibari", "Ziyad Al Johani", "Nasser Al Dawsari", "Musab Al Juwayr", "Alaa Al Hajji", "Salem Al Dawsari", "Khalil Al Ghannam", "Ayman Yahya"], "FV": ["Firas Al Buraikan", "Saleh Al Shehri", "Abdullah Al Hamdan"] },
-  "Fransa": { "KL": ["Mike Maignan", "Robin Risser", "Brice Samba"], "DF": ["Lucas Digne", "Malo Gusto", "Lucas Hernández", "Theo Hernández", "Ibrahima Konaté", "Jules Koundé", "Maxence Lacroix", "William Saliba", "Dayot Upamecano"], "OS": ["N'Golo Kanté", "Manu Koné", "Adrien Rabiot", "Aurélien Tchouaméni", "Warren Zaïre-Emery"], "FV": ["Maghnes Akliouche", "Bradley Barcola", "Rayan Cherki", "Ousmane Dembélé", "Désiré Doué", "Jean-Philippe Mateta", "Kylian Mbappé", "Michael Olise", "Marcus Thuram"] },
-  "Senegal": { "KL": ["Édouard Mendy", "Mory Diaw", "Yehvann Diouf"], "DF": ["Krépin Diatta", "Antoine Mendy", "Kalidou Koulibaly", "El Hadji Malick Diouf", "Mamadou Sarr", "Moussa Niakhaté", "Abdoulaye Seck", "Ismail Jakobs"], "OS": ["Idrissa Gana Gueye", "Pape Gueye", "Lamine Camara", "Habib Diarra", "Pathé Ciss", "Pape Matar Sarr", "Bara Sapoko Ndiaye"], "FV": ["Sadio Mané", "Ismaïla Sarr", "Iliman Ndiaye", "Assane Diao", "Ibrahim Mbaye", "Nicolas Jackson", "Bamba Dieng", "Cherif Ndiaye"] },
-  "Irak": { "KL": ["Fahad Talib", "Jalal Hassan", "Ahmed Basil"], "DF": ["Hussein Ali", "Manaf Younis", "Zaid Tahseen", "Rebin Sulaka", "Akam Hashem", "Merchas Doski", "Ahmed Yahya", "Zaid Ismail", "Frans Putros", "Mustafa Saadoon"], "OS": ["Amir Al-Ammari", "Kevin Yakob", "Zidane Iqbal", "Aimar Sher", "Ibrahim Bayesh", "Ahmed Qasim", "Youssef Amyn", "Marko Farji"], "FV": ["Ali Jasim", "Ali Al-Hamadi", "Ali Yousef", "Aymen Hussein", "Mohanad Ali"] },
-  "Norveç": { "KL": ["Ørjan Nyland", "Egil Selvik", "Sander Tangvik"], "DF": ["Julian Ryerson", "Kristoffer Ajer", "Leo Østigård", "David Møller Wolfe", "Marcus Pedersen", "Torbjørn Heggem", "Fredrik André Bjørkan", "Henrik Falchener", "Sondre Langås"], "OS": ["Martin Ødegaard", "Sander Berge", "Patrick Berg", "Kristian Thorstvedt", "Morten Thorsby", "Thelo Aasgaard", "Andreas Schjelderup", "Jens Petter Hauge", "Fredrik Aursnes", "Oscar Bobb", "Antonio Nusa"], "FV": ["Erling Haaland", "Alexander Sørloth", "Jørgen Strand Larsen"] },
-  "Arjantin": { "KL": ["Emiliano Martínez", "Gerónimo Rulli", "Juan Musso"], "DF": ["Gonzalo Montiel", "Nahuel Molina", "Lisandro Martínez", "Nicolás Otamendi", "Leonardo Balerdi", "Cristian Romero", "Facundo Medina", "Nicolás Tagliafico"], "OS": ["Leandro Paredes", "Rodrigo De Paul", "Exequiel Palacios", "Enzo Fernández", "Alexis Mac Allister", "Giovani Lo Celso", "Valentín Barco"], "FV": ["Lionel Messi", "Nico Paz", "Thiago Almada", "Nicolás González", "Giuliano Simeone", "Lautaro Martínez", "Jose Manuel López", "Julián Álvarez"] },
-  "Cezayir": { "KL": ["Oussama Benbot", "Melvin Masstil", "Luca Zidane"], "DF": ["Achraf Abada", "Rayan Ait Nouri", "Zinedine Belaid", "Rafik Belghali", "Ramy Bensebaini", "Samir Chergui", "Jaouen Hadjam", "Aissa Mandi", "Mohamed Amine Tougai"], "OS": ["Houssem Aouar", "Nabil Bentaleb", "Hicham Boudaoui", "Fares Chaibi", "Ibrahim Maza", "Yassine Titraoui", "Ramiz Zerrouki"], "FV": ["Mohamed Amine Amoura", "Nadir Benbouali", "Adil Boulbina", "Fares Ghedjemis", "Amine Gouiri", "Riyad Mahrez", "Anis Hadj Moussa"] },
-  "Avusturya": { "KL": ["Alexander Schlager", "Florian Wiegele", "Patrick Pentz"], "DF": ["David Affengruber", "Kevin Danso", "Stefan Posch", "David Alaba", "Philipp Lienhart", "Philipp Mwene", "Alexander Prass", "Marco Friedl", "Michael Svoboda"], "OS": ["Xaver Schlager", "Nicolas Seiwald", "Marcel Sabitzer", "Florian Grillitsch", "Carney Chukwuemeka", "Romano Schmid", "Christoph Baumgartner", "Konrad Laimer", "Patrick Wimmer", "Paul Wanner", "Alessandro Schopf"], "FV": ["Marko Arnautovic", "Michael Gregoritsch", "Sasa Kalajdzic"] },
-  "Ürdün": { "KL": ["Yazid Abulaila", "Abdallah Al-Fakhouri", "Nour Bani Attiah"], "DF": ["Ihsan Haddad", "Saed Al-Rosan", "Mohammad Abualnadi", "Husam Abu Dahab", "Mohammed Abu Hashish", "Yazan Al-Arab", "Anas Badawi", "Abdullah Nasib", "Saleem Obaid"], "OS": ["Mohammed Al-Dawoud", "Nizar Al-Rashdan", "Noor Al-Rawabdeh", "Rajaei Ayed", "Amer Jamous", "Ibrahim Sadeh", "Mohannad Abu Taha"], "FV": ["Mohammed Abu Zrayq", "Mousa Al-Tamari", "Ali Azaizeh", "Odeh Al-Fakhouri", "Ali Olwan", "Ibrahim Sabra", "Mahmoud Al-Mardi"] },
-  "Portekiz": { "KL": ["Diogo Costa", "José Sá", "Rui Silva", "Ricardo Velho"], "DF": ["Rúben Dias", "João Cancelo", "Diogo Dalot", "Nuno Mendes", "Nélson Semedo", "Matheus Nunes", "Gonçalo Inacio", "Renato Veiga", "Tomás Araújo"], "OS": ["Bruno Fernandes", "Bernardo Silva", "Vitinha", "João Neves", "Rúben Neves", "Samú Costa"], "FV": ["Cristiano Ronaldo", "Rafael Leão", "João Félix", "Gonçalo Ramos", "Pedro Neto", "Francisco Conceição", "Gonçalo Guedes", "Francisco Trincão"] },
-  "Kongo Demokratik Cumhuriyeti": { "KL": ["Lionel Mpasi", "Timothy Fayulu", "Matthieu Epolo"], "DF": ["Chancel Mbemba", "Axel Tuanzebe", "Arthur Masuaku", "Gedeon Kalulu", "Joris Kayembe", "Aaron Wan-Bissaka", "Aaron Tshibola", "Steve Kapuadi", "Dylan Batubinsika"], "OS": ["Noah Sadiki", "Charles Pickel", "Edo Kayembe", "Samuel Moutoussamy", "Ngal'ayel Mukau", "Nathanaël Mbuku", "Meschak Elia", "Brian Cipenga", "Gaël Kakuta", "Théo Bongonda"], "FV": ["Simon Banza", "Yoane Wissa", "Fiston Mayele", "Cédric Bakambu"] },
-  "Özbekistan": { "KL": ["Utkir Yusupov", "Botirali Ergashev", "Abduvokhid Nematov"], "DF": ["Avazbek Ulmasaliev", "Jakhongir Urozov", "Rustamjon Ashurmatov", "Umarbek Eshmurodov", "Abdukodir Khusanov", "Abdulla Abdullaev", "Farrukh Sayfiev", "Khojiakbar Alijonov", "Sherzod Nasrullaev", "Behruz Kerimov"], "OS": ["Sherzod Esanov", "Umarali Rakhmonaliev", "Akmal Mozgovoy", "Otabek Shukurov", "Jamshid Iskanderov", "Azizjon Ganiev", "Abbosek Fayzullaev", "Jaloliddin Masharipov", "Dostonbek Khamdamov", "Oston Urunov"], "FV": ["Azizbek Amonov", "Igor Sergeev", "Eldor Shomurodov"] },
-  "Kolombiya": { "KL": ["David Ospina", "Álvaro Montero", "Camilo Vargas"], "DF": ["Daniel Muñoz", "Jhon Lucumí", "Santiago Arias", "Davinson Sánchez", "Johan Mojica", "Yerry Mina", "Willer Ditta", "Deiver Machado"], "OS": ["Jorge Carrascal", "Kevin Castaño", "Gustavo Puerta", "Juan Fernando Quintero", "Juan Portilla", "Jefferson Lerma", "Richard Ríos", "Jhon Arias", "James Rodríguez", "Jaminton Campaz"], "FV": ["Luis Díaz", "Jhon Córdoba", "Luis Suárez", "Andrés Gómez", "Cucho Hernández"] },
-  "İngiltere": { "KL": ["Jordan Pickford", "Dean Henderson", "James Trafford"], "DF": ["Reece James", "Ezri Konsa", "Jarell Quansah", "John Stones", "Marc Guéhi", "Dan Burn", "Nico O'Reilly", "Djed Spence", "Tino Livramento"], "OS": ["Declan Rice", "Elliot Anderson", "Kobbie Mainoo", "Jordan Henderson", "Morgan Rogers", "Jude Bellingham", "Eberechi Eze"], "FV": ["Harry Kane", "Ivan Toney", "Ollie Watkins", "Bukayo Saka", "Marcus Rashford", "Anthony Gordon", "Noni Madueke"] },
-  "Hırvatistan": { "KL": ["Dominik Livakovic", "Dominik Kotarski", "Ivor Pandur"], "DF": ["Josko Gvardiol", "Duje Caleta-Car", "Josip Sutalo", "Josip Stanisic", "Marin Pongracic", "Martin Erlic", "Luka Vuskovic"], "OS": ["Luka Modric", "Mateo Kovacic", "Mario Pasalic", "Nikola Vlasic", "Luka Sucic", "Martin Baturina", "Kristijan Jakic", "Petar Sucic", "Nikola Moro", "Toni Fruk"], "FV": ["Ivan Perisic", "Andrej Kramaric", "Ante Budimir", "Marco Pasalic", "Petar Musa", "Igor Matanovic"] },
-  "Gana": { "KL": ["Benjamin Asare", "Lawrence Ati-Zigi", "Joseph Anang"], "DF": ["Baba Abdul Rahman", "Gideon Mensah", "Marvin Senaya", "Alidu Seidu", "Abdul Mumin", "Jerome Opoku", "Jonas Adjetey", "Kojo Oppong Peprah", "Derrick Luckassen"], "OS": ["Elisha Owusu", "Thomas Partey", "Kwasi Sibo", "Augustine Boakye", "Caleb Yirenkyi", "Abdul Fatawu Issahaku"], "FV": ["Kamal Deen Sulemana", "Christopher Bonsu Baah", "Ernest Nuamah", "Antoine Semenyo", "Brandon Thomas-Asante", "Prince Kwabena Adu", "Iñaki Williams", "Jordan Ayew"] },
-  "Panama": { "KL": ["Orlando Camira", "Luis Mejía", "César Samudio"], "DF": ["César Blackman", "Jorge Gutiérrez", "Amir Murillo", "Fidel Escobar", "Andrés Andrade", "Edgardo Fariña", "José Córdoba", "Éric Davis", "Jiovany Ramos", "Roderick Miller"], "OS": ["Aníbal Godoy", "Adalberto Carrasquilla", "Carlos Harvey", "Cristian Martínez", "José Luis Rodríguez", "César Yanis", "Yoel Bárcenas", "Alberto Quintero", "Azarias Londoño"], "FV": ["Ismael Díaz", "Cecilio Waterman", "José Fajardo", "Tomás Rodríguez"] }
-};
-
-const SQUADS = {};
-for(const team in RAW_SQUADS){
-  SQUADS[team] = [];
-  for(const pos in RAW_SQUADS[team]){
-    RAW_SQUADS[team][pos].forEach(p => {
-      SQUADS[team].push(`[${team} - ${pos}] ${p.trim()}`);
-    });
-  }
-}
-
-const FLAG={"Meksika":"🇲🇽","Güney Afrika":"🇿🇦","Güney Kore":"🇰🇷","Çekya":"🇨🇿","Kanada":"🇨🇦","Bosna Hersek":"🇧🇦","Katar":"🇶🇦","İsviçre":"🇨🇭","Brezilya":"🇧🇷","Fas":"🇲🇦","Haiti":"🇭🇹","İskoçya":"🏴󠁧󠁢󠁳󠁣󠁴󠁿","ABD":"🇺🇸","Paraguay":"🇵🇾","Avustralya":"🇦🇺","Türkiye":"🇹🇷","Almanya":"🇩🇪","Curaçao":"🇨🇼","Fildişi Sahili":"🇨🇮","Ekvador":"🇪🇨","Hollanda":"🇳🇱","Japonya":"🇯🇵","İsveç":"🇸🇪","Tunus":"🇹🇳","Belçika":"🇧🇪","Mısır":"🇪🇬","İran":"🇮🇷","Yeni Zelanda":"🇳🇿","İspanya":"🇪🇸","Yeşil Burun Adaları":"🇨🇻","Suudi Arabistan":"🇸🇦","Uruguay":"🇺🇾","Fransa":"🇫🇷","Senegal":"🇸🇳","Irak":"🇮🇶","Norveç":"🇳🇴","Arjantin":"🇦🇷","Cezayir":"🇩🇿","Avusturya":"🇦🇹","Ürdün":"🇯🇴","Portekiz":"🇵🇹","Kongo Demokratik Cumhuriyeti":"🇨🇩","Özbekistan":"🇺🇿","Kolombiya":"🇨🇴","İngiltere":"🏴󠁧󠁢󠁥󠁮󠁧󠁿","Hırvatistan":"🇭🇷","Gana":"🇬🇭","Panama":"🇵🇦"};
-
-// Transfermarkt milli takım istatistikleri (caps/gol/asist)
-const PLAYER_STATS={
-// ── Meksika ── "Carlos Acevedo":{c:7,g:0},"Guillermo Ochoa":{c:152,g:0},"Raúl Rangel":{c:13,g:0}, "Jesús Gallardo":{c:120,g:3},"Israel Reyes":{c:33,g:2},"César Montes":{c:66,g:4},"Jorge Sánchez":{c:58,g:3},"Johan Vásquez":{c:45,g:2},"Mateo Chávez":{c:9,g:0}, "Gilberto Mora":{c:7,g:0},"Edson Álvarez":{c:97,g:7},"Orbelín Pineda":{c:91,g:12},"Luis Romo":{c:62,g:4},"Brian Gutiérrez":{c:6,g:2},"Obed Vargas":{c:6,g:0},"César Huerta":{c:26,g:3},"Luis Chavez":{c:44,g:4},"Erik Lira":{c:24,g:0},"Álvaro Fidalgo":{c:3,g:0},"Roberto Alvarado":{c:66,g:5}, "Armando González":{c:7,g:1},"Raúl Jiménez":{c:123,g:44},"Julián Quiñones":{c:21,g:2},"Santiago Gimenez":{c:47,g:6},"Guillermo Martínez":{c:11,g:3},"Alexis Vega":{c:51,g:7},  // ── Güney Afrika ── "Ronwen Williams":{c:62,g:0},"Ricardo Goss":{c:4,g:0},"Sipho Chaine":{c:3,g:0}, "Khuliso Mudau":{c:32,g:1},"Nkosinathi Sibisi":{c:19,g:0},"Ime Okon":{c:7,g:1},"Khulumani Ndamane":{c:5,g:0},"Aubrey Modiba":{c:44,g:3},"Samukelo Kabini":{c:5,g:0},"Thabang Matuludi":{c:2,g:0},"Olwethu Makhanya":{c:0,g:0},"Kamgogelo Sebelebele":{c:2,g:0},"Bradley Cross":{c:0,g:0},"Mbekezeli Mbokazi":{c:10,g:1}, "Teboho Mokoena":{c:51,g:9},"Thalente Mbatha":{c:14,g:3},"Yaya Sithole":{c:27,g:1},"Jayden Adams":{c:4,g:0}, "Oswin Appollis":{c:25,g:8},"Iqraam Rayners":{c:13,g:4},"Tshepang Moremi":{c:9,g:1},"Relebohile Mofokeng":{c:12,g:0},"Evidence Makgopa":{c:26,g:6},"Themba Zwane":{c:53,g:12},"Lyle Foster":{c:26,g:10},"Thapelo Maseko":{c:9,g:1},  // ── Güney Kore ── "Jo Hyun-Woo":{c:48,g:0},"Kim Seung-Gyu":{c:86,g:0},"Song Bum-Keun":{c:2,g:0}, "Kim Min-Jae":{c:78,g:4},"Lee Han-Beom":{c:7,g:0},"Kim Tae-Hyun":{c:7,g:0},"Park Jin-Seop":{c:13,g:1},"Lee Ki-Hyeok":{c:2,g:0},"Lee Tae-Seok":{c:14,g:1},"Seol Young-Woo":{c:33,g:0},"Jens Castrop":{c:6,g:0},"Kim Moon-Hwan":{c:35,g:0}, "Yang Hyun-Jun":{c:8,g:0},"Paik Seung-Ho":{c:26,g:3},"Hwang In-Beom":{c:72,g:6},"Kim Jin-Kyu":{c:21,g:3},"Bae Jun-Ho":{c:13,g:2},"Um Ji-Sung":{c:9,g:2},"Hwang Hee-Chan":{c:78,g:17},"Lee Dong-Gyeong":{c:17,g:3},"Lee Jae-Sung":{c:104,g:15},"Lee Kang-In":{c:46,g:11}, "Oh Hyun-Kyu":{c:26,g:6},"Son Heung-Min":{c:143,g:56},"Cho Kyu-Sung":{c:43,g:12},  // ── Çekya ── "Lukas Hornicek":{c:1,g:0},"Jindrich Stanek":{c:14,g:0}, "Vladimír Coufal":{c:61,g:2},"David Douděra":{c:16,g:2},"Tomáš Holeš":{c:40,g:2},"Robin Hranáč":{c:13,g:1},"Štěpán Chaloupek":{c:4,g:0},"David Jurásek":{c:17,g:1},"Ladislav Krejčí":{c:26,g:5},"Jaroslav Zelený":{c:22,g:0},"David Zima":{c:24,g:1}, "Lukás Cerv":{c:16,g:2},"Vladimir Darida":{c:78,g:8},"Lukás Provod":{c:37,g:3},"Michal Sadílek":{c:34,g:1},"Hugo Sochůrek":{c:1,g:0},"Alexandr Sojka":{c:1,g:0},"Tomáš Souček":{c:89,g:17}, "Adam Hložek":{c:42,g:5},"Tomáš Chorý":{c:21,g:6},"Mojmír Chytil":{c:22,g:6},"Jan Kuchta":{c:31,g:3},"Patrik Schick":{c:52,g:25},"Denis Višinský":{c:1,g:0},  // ── Kanada ── "Dayne St. Clair":{c:19,g:0},"Maxime Crépeau":{c:30,g:0},"Owen Goodman":{c:0,g:0}, "Moïse Bombito":{c:19,g:0},"Derek Cornelius":{c:42,g:1},"Alphonso Davies":{c:58,g:15},"Luc De Fougerolles":{c:11,g:0},"Alistair Johnston":{c:56,g:1},"Alfie Jones":{c:1,g:0},"Richie Laryea":{c:73,g:1},"Niko Sigur":{c:17,g:2},"Joel Waterman":{c:17,g:0}, "Ali Ahmed":{c:24,g:1},"Tajon Buchanan":{c:58,g:8},"Mathieu Choinière":{c:22,g:0},"Stephen Eustáquio":{c:54,g:4},"Ismaël Koné":{c:38,g:4},"Liam Millar":{c:39,g:1},"Jonathan Osorio":{c:89,g:9},"Nathan Saliba":{c:13,g:2},"Jacob Shaffelburg":{c:31,g:6}, "Jonathan David":{c:75,g:39},"Promise David":{c:8,g:3},"Cyle Larin":{c:88,g:30},"Tani Oluwaseyi":{c:22,g:2},  // ── Bosna Hersek ── "Nikola Vasilj":{c:25,g:0},"Martin Zlomislic":{c:3,g:0},"Osman Hadzikic":{c:0,g:0}, "Sead Kolasinac":{c:64,g:0},"Amar Dedic":{c:27,g:1},"Nihad Mujakic":{c:11,g:1},"Nikola Katic":{c:16,g:1},"Tarık Muharemovic":{c:13,g:1},"Stjepan Radeljic":{c:5,g:0},"Dennis Hadzikadunic":{c:31,g:0},"Nidal Çelik":{c:1,g:0}, "Amir Hadziahmetovic":{c:35,g:0},"Ivan Sunjic":{c:11,g:0},"Ivan Basic":{c:16,g:0},"Dzenis Burnic":{c:19,g:0},"Ermin Mahmic":{c:1,g:0},"Benjamin Tahirovic":{c:27,g:2},"Amar Memic":{c:12,g:1},"Armin Gigovic":{c:19,g:1},"Kerim Alajbegovic":{c:9,g:1},"Esmir Bajraktareviç":{c:15,g:1}, "Ermedin Demirovic":{c:39,g:4},"Jovo Lukic":{c:2,g:0},"Samed Bazdar":{c:12,g:1},"Haris Tabakovic":{c:10,g:4},"Edin Dzeko":{c:148,g:73},  // ── Katar ── "Salah Zakaria":{c:8,g:0},"Meshaal Barsham":{c:52,g:0},"Mahmoud Abunada":{c:4,g:0}, "Boualem Khoukhi":{c:115,g:20},"Pedro Miguel":{c:98,g:3},"Sultan Al Brake":{c:16,g:0},"Al-Hashmi Al-Hussain":{c:7,g:0},"Ayoub Al-Alawi":{c:5,g:0},"Issa Laye":{c:3,g:0},"Lucas Mendes":{c:25,g:1},"Homam Al-Amin":{c:67,g:3}, "Ahmed Fathi":{c:47,g:0},"Jassim Gaber":{c:31,g:1},"Assim Madibo":{c:50,g:0},"Abdulaziz Hatem":{c:117,g:11},"Karim Boudiaf":{c:117,g:5},"Mohammed Mannai":{c:9,g:0}, "Almoez Ali":{c:115,g:55},"Akram Afif":{c:124,g:39},"Tahsin Mohammed":{c:2,g:0},"Edmílson Junior":{c:15,g:0},"Ahmed Al-Ganehi":{c:13,g:1},"Ahmed Alaa":{c:67,g:9},"Hassan Al-Haydos":{c:185,g:41},"Mohammed Muntari":{c:67,g:16},"Yusuf Abdurisag":{c:38,g:3},  // ── İsviçre ── "Gregor Kobel":{c:20,g:0},"Yvon Mvogo":{c:13,g:0},"Marvin Keller":{c:1,g:0}, "Manuel Akanji":{c:80,g:4},"Nico Elvedi":{c:66,g:3},"Ricardo Rodriguez":{c:137,g:9},"Silvan Widmer":{c:59,g:5},"Miro Muheim":{c:9,g:0},"Aurèle Amenda":{c:6,g:0},"Eray Cömert":{c:21,g:0},"Luca Jaquez":{c:3,g:0}, "Granit Xhaka":{c:145,g:17},"Johan Manzambi":{c:11,g:3},"Remo Freuler":{c:87,g:11},"Denis Zakaria":{c:64,g:3},"Ardon Jashari":{c:7,g:0},"Djibril Sow":{c:51,g:0},"Christian Fassnacht":{c:22,g:5},"Michel Aebischer":{c:39,g:2},"Fabian Rieder":{c:27,g:1},"Rubén Vargas":{c:61,g:11}, "Breel Embolo":{c:86,g:24},"Noah Okafor":{c:24,g:2},"Dan Ndoye":{c:30,g:7},"Zeki Amdouni":{c:28,g:11},"Cedric Itten":{c:14,g:5},  // ── Brezilya ── "Alisson":{c:77,g:0},"Éderson":{c:32,g:0},"Weverton":{c:10,g:0}, "Alex Sandro":{c:44,g:2},"Bremer":{c:7,g:1},"Danilo":{c:69,g:1},"Douglas Santos":{c:6,g:0},"Gabriel Magalhäes":{c:17,g:1},"Léo Pereira":{c:3,g:0},"Marquinhos":{c:104,g:7},"Roger Ibañez":{c:6,g:0},"Wesley":{c:7,g:0}, "Bruno Guimarão":{c:42,g:2},"Casemiro":{c:85,g:9},"Danilo Santos":{c:3,g:2},"Fabinho":{c:32,g:0},"Lucas Paquetá":{c:62,g:13}, "Endrick":{c:16,g:3},"Gabriel Martinelli":{c:22,g:4},"Igor Thiago":{c:3,g:2},"Luiz Henrique":{c:14,g:2},"Matheus Cunha":{c:22,g:1},"Neymar":{c:128,g:79},"Raphinha":{c:38,g:11},"Rayan":{c:2,g:1},"Vinícius Júnior":{c:48,g:9},  // ── Fas ── "Yassine Bounou":{c:89,g:0},"Munir El Kajoui":{c:51,g:0},"Reda Tagnaouti":{c:3,g:0}, "Noussair Mazraoui":{c:43,g:2},"Anass Salah-Eddine":{c:8,g:0},"Youssef Belammari":{c:16,g:0},"Achraf Hakimi":{c:95,g:11},"Zakaria El Ouahdi":{c:2,g:0},"Chadi Riad":{c:4,g:1},"Nayef Aguerd":{c:64,g:2},"Redouane Halhal":{c:1,g:0},"Issa Diop":{c:2,g:0}, "Samir El Mourabet":{c:2,g:0},"Ayyoub Bouaddi":{c:1,g:0},"Neil El Aynaoui":{c:15,g:2},"Sofyan Amrabat":{c:73,g:0},"Azzedine Ounahi":{c:47,g:9},"Bilal El Khannouss":{c:35,g:3},"Ismael Saibari":{c:28,g:7}, "Abde Ezzalzouli":{c:35,g:2},"Chemsdine Talbi":{c:5,g:0},"Soufiane Rahimi":{c:35,g:11},"Ayoub El Kaabi":{c:57,g:22},"Brahim Díaz":{c:24,g:13},"Gessime Yassine":{c:3,g:0},"Ayoube Amaimouni":{c:0,g:0},  // ── Haiti ── "Johny Placide":{c:79,g:0},"Alexandre Pierre":{c:14,g:0},"Josue Duverger":{c:6,g:0}, "Carlens Arcus":{c:51,g:1},"Wilguens Paugain":{c:6,g:0},"Duke Lacroix":{c:14,g:2},"Martin Expérience":{c:19,g:0},"Jean-Kévin Duverne":{c:15,g:1},"Ricardo Adé":{c:57,g:2},"Hannes Delcroix":{c:5,g:0},"Keeto Thermoncy":{c:1,g:0}, "Carl Fred Sainté":{c:25,g:0},"Leverton Pierre":{c:33,g:0},"Danley Jean Jacques":{c:28,g:6},"Jean-Ricner Bellegarde":{c:8,g:0},"Woodensky Pierre":{c:1,g:0},"Dominique Simon":{c:0,g:0}, "Don Deedson Louicius":{c:30,g:10},"Josué Casimir":{c:5,g:0},"Derrick Etienne":{c:46,g:8},"Ruben Providence":{c:13,g:2},"Duckens Nazon":{c:76,g:44},"Frantzdy Pierrot":{c:49,g:33},"Wilson Isidor":{c:2,g:1},"Yassin Fortuné":{c:3,g:0},"Lenny Joseph":{c:0,g:0},  // ── İskoçya ── "Craig Gordon":{c:84,g:0},"Angus Gunn":{c:21,g:0},"Liam Kelly":{c:3,g:0}, "Grant Hanley":{c:67,g:2},"Jack Hendry":{c:37,g:3},"Aaron Hickey":{c:20,g:0},"Dom Hyam":{c:3,g:0},"Scott McKenna":{c:50,g:1},"Nathan Patterson":{c:26,g:1},"Anthony Ralston":{c:26,g:1},"Andy Robertson":{c:93,g:4},"John Souttar":{c:23,g:2},"Kieran Tierney":{c:55,g:2}, "Ryan Christie":{c:67,g:10},"Finlay Curtis":{c:2,g:1},"Lewis Ferguson":{c:23,g:1},"Ben Gannon-Doak":{c:13,g:1},"John McGinn":{c:85,g:20},"Kenny McLean":{c:57,g:3},"Scott McTominay":{c:69,g:14}, "Ché Adams":{c:46,g:11},"Lyndon Dykes":{c:51,g:10},"George Hirst":{c:9,g:1},"Lawrence Shankland":{c:19,g:6},"Ross Stewart":{c:2,g:0},  // ── ABD ── "Chris Brady":{c:1,g:0},"Matt Freese":{c:14,g:0},"Matt Turner":{c:54,g:0}, "Max Arfsten":{c:19,g:1},"Sergiño Dest":{c:38,g:3},"Alex Freeman":{c:16,g:2},"Mark McKenzie":{c:28,g:0},"Tim Ream":{c:81,g:1},"Chris Richards":{c:36,g:3},"Antonee Robinson":{c:53,g:4},"Miles Robinson":{c:39,g:3},"Joe Scally":{c:25,g:0},"Auston Trusty":{c:7,g:0}, "Tyler Adams":{c:53,g:2},"Sebastian Berhalter":{c:12,g:1},"Weston McKennie":{c:65,g:12},"Cristian Roldan":{c:46,g:0},"Brenden Aaronson":{c:57,g:9},"Malik Tillman":{c:29,g:3},"Tim Weah":{c:50,g:7},"Alejandro Zendejas":{c:14,g:2}, "Christian Pulisic":{c:85,g:33},"Gio Reyna":{c:37,g:9},"Folarin Balogun":{c:26,g:9},"Ricardo Pepi":{c:36,g:13},"Haji Wright":{c:20,g:7},  // ── Avustralya ── "Mathew Ryan":{c:104,g:0},"Paul Izzo":{c:4,g:0},"Patrick Beach":{c:1,g:0}, "Jordan Bos":{c:26,g:4},"Aziz Behich":{c:83,g:3},"Harry Souttar":{c:37,g:11},"Alessandro Circati":{c:12,g:1},"Lucas Herrington":{c:3,g:0},"Cameron Burgess":{c:26,g:0},"Kai Trewin":{c:5,g:0},"Milos Degenek":{c:56,g:1},"Jason Geria":{c:13,g:0},"Jacob Italiano":{c:4,g:0}, "Jackson Irvine":{c:81,g:14},"Aiden O'Neill":{c:30,g:0},"Paul Okon Jr":{c:5,g:0},"Cameron Devlin":{c:4,g:0}, "Connor Metcalfe":{c:35,g:1},"Mathew Leckie":{c:79,g:14},"Nishan Velupillay":{c:7,g:3},"Cristian Volpato":{c:0,g:0},"Nestory Irankunda":{c:14,g:5},"Awer Mabil":{c:38,g:10},"Ajdin Hrustic":{c:37,g:4},"Mohamed Toure":{c:9,g:2},"Tete Yengi":{c:0,g:0},  // ── Paraguay ── "Roberto Fernández":{c:30,g:0},"Orlando Gill":{c:5,g:0},"Gastón Olveira":{c:1,g:0}, "Gustavo Gómez":{c:88,g:4},"Júnior Alonso":{c:70,g:3},"Fabián Balbuena":{c:47,g:2},"Omar Alderete":{c:35,g:3},"Juan Caceres":{c:16,g:0},"Jose Canale":{c:1,g:0},"Alexandro Maidana":{c:1,g:0},"Gustavo Velázquez":{c:12,g:1}, "Miguel Almirón":{c:75,g:9},"Kaku":{c:32,g:5},"Andrés Cubas":{c:32,g:0},"Ramón Sosa":{c:28,g:1},"Diego Gómez":{c:23,g:3},"Damián Bobadilla":{c:19,g:1},"Braian Ojeda":{c:16,g:0},"Matías Galarza":{c:14,g:2},"Maurício":{c:2,g:0}, "Antonio Sanabria":{c:47,g:7},"Julio Enciso":{c:31,g:4},"Gabriel Ávalos":{c:22,g:2},"Alex Arce":{c:14,g:1},"Isidro Pitta":{c:5,g:0},"Gustavo Caballero":{c:2,g:1},  // ── Türkiye ── "Uğurcan Çakır":{c:38,g:0},"Mert Günok":{c:37,g:0},"Altay Bayındır":{c:11,g:0}, "Merih Demiral":{c:61,g:6},"Zeki Çelik":{c:59,g:3},"Çağlar Soyuncu":{c:59,g:2},"Mert Müldür":{c:43,g:3},"Ferdi Kadıoğlu":{c:30,g:2},"Ozan Kabak":{c:28,g:2},"Abdulkerim Bardakçı":{c:26,g:2},"Eren Elmalı":{c:21,g:0},"Samet Akaydin":{c:18,g:1}, "Hakan Calhanoglou":{c:104,g:22},"Kaan Ayhan":{c:72,g:5},"Orkun Kökçü":{c:48,g:3},"İsmail Yüksek":{c:31,g:1},"Salih Özcan":{c:28,g:1}, "Kerem Aktürkoğlu":{c:51,g:15},"İrfan Can Kahveci":{c:45,g:6},"Barış Apler Yılmaz":{c:33,g:2},"Arda Güler":{c:28,g:6},"Kenan Yıldız":{c:28,g:5},"Yunus Akgün":{c:17,g:3},"Oğuz Aydın":{c:9,g:0},"Deniz Gül":{c:6,g:1},"Can Uzun":{c:4,g:0},  // ── Almanya ── "Oliver Baumann":{c:12,g:0},"Manuel Neuer":{c:124,g:0},"Alexander Nübel":{c:3,g:0}, "Waldemar Anton":{c:12,g:0},"Nathaniel Brown":{c:4,g:0},"David Raum":{c:36,g:1},"Antonio Rüdiger":{c:82,g:3},"Nico Schlotterbeck":{c:26,g:0},"Jonathan Tah":{c:46,g:1},"Malick Thiaw":{c:5,g:0}, "Pascal Gross":{c:18,g:1},"Joshua Kimmich":{c:109,g:11},"Felix Nmecha":{c:7,g:1},"Aleksandar Pavlovic":{c:10,g:1},"Angelo Stiller":{c:7,g:0},"Leon Goretzka":{c:69,g:15},"Florian Wirtz":{c:40,g:11},"Jamie Leweling":{c:4,g:1}, "Maximilian Beier":{c:8,g:0},"Kai Havertz":{c:57,g:21},"Lennart Karl":{c:3,g:0},"Jamal Musiala":{c:41,g:9},"Leroy Sané":{c:75,g:16},"Deniz Undav":{c:8,g:6},"Nick Woltemade":{c:11,g:4},  // ── Curaçao ── "Eloy Room":{c:71,g:0},"Tyrick Bodak":{c:4,g:0},"Trevor Doornbusch":{c:7,g:0}, "Riechedly Bazoer":{c:4,g:0},"Joshua Brenet":{c:17,g:1},"Roshon van Eijma":{c:27,g:1},"Sherel Floranus":{c:27,g:0},"Deveron Fonville":{c:1,g:0},"Jurien Gaari":{c:59,g:1},"Armando Obispo":{c:5,g:0},"Shurandy Sambo":{c:7,g:0}, "Juninho Bacuna":{c:48,g:14},"Leandro Bacuna":{c:71,g:16},"Livano Comenencia":{c:19,g:1},"Kevin Felida":{c:19,g:1},"Ar'jany Martha":{c:8,g:2},"Tyrese Noslin":{c:6,g:1},"Godfried Roemeratoe":{c:27,g:1}, "Jeremy Antonisse":{c:26,g:3},"Tahith Chong":{c:5,g:3},"Kenji Gorre":{c:37,g:6},"Sontje Hansen":{c:5,g:1},"Gervane Kastaneer":{c:28,g:9},"Brandley Kuwas":{c:34,g:2},"Jurgen Locadia":{c:13,g:1},"Jearl Margaritha":{c:21,g:5},  // ── Fildişi Sahili ── "Yahia Fofana":{c:34,g:0},"Mohamed Koné":{c:0,g:0},"Alban Lafont":{c:4,g:0}, "Emmanuel Agbadou":{c:19,g:2},"Ousmane Diomande":{c:14,g:1},"Guela Doué":{c:19,g:2},"Ghislain Konan":{c:53,g:0},"Odilon Kossounou":{c:35,g:0},"Evan Ndicka":{c:28,g:0},"Wilfried Singo":{c:33,g:1}, "Seko Fofana":{c:31,g:7},"Parfait Guiagon":{c:5,g:0},"Franck Kessié":{c:102,g:15},"Christ Inao Oulaï":{c:8,g:0},"Ibrahim Sangaré":{c:57,g:12},"Jean Michaël Seri":{c:65,g:4}, "Simon Adingra":{c:28,g:5},"Ange-Yoan Bonny":{c:0,g:0},"Amad Diallo":{c:18,g:5},"Oumar Diakité":{c:28,g:6},"Yan Diomande":{c:9,g:3},"Evann Guessand":{c:21,g:4},"Nicolas Pépé":{c:54,g:12},"Bazoumana Touré":{c:5,g:2},"Elye Wahi":{c:1,g:0},  // ── Ekvador ── "Hernán Galíndez":{c:34,g:0},"Moisés Ramírez":{c:7,g:0},"Gonzalo Valle":{c:3,g:0}, "Willian Pacho":{c:34,g:2},"Piero Hincapié":{c:51,g:3},"Joel Ordóñez":{c:16,g:0},"Félix Torres":{c:48,g:5},"Pervis Estupiñán":{c:53,g:4},"Yaimar Medina":{c:5,g:0},"Ángelo Preciado":{c:54,g:0},"Jackson Porozo":{c:9,g:1}, "Alan Minda":{c:19,g:2},"Moisés Caicedo":{c:60,g:3},"Jordy Alcivar":{c:10,g:1},"Denil Castillo":{c:5,g:0},"John Yeboah":{c:22,g:3},"Alan Franco":{c:57,g:1},"Pedro Vite":{c:16,g:1},"Kendry Páez":{c:25,g:2},"Nilson Angulo":{c:13,g:1},"Gonzalo Plata":{c:49,g:8}, "Kevin Rodríguez":{c:31,g:2},"Anthony Valencia":{c:2,g:1},"Enner Valencia":{c:105,g:49},"Jordy Caicedo":{c:19,g:3},"Jeremy Arévalo":{c:3,g:0},  // ── Hollanda ── "Mark Flekken":{c:11,g:0},"Robin Roefs":{c:0,g:0},"Bart Verbruggen":{c:27,g:0}, "Nathan Aké":{c:58,g:5},"Denzel Dumfries":{c:71,g:11},"Jorrel Hato":{c:7,g:0},"Jurriën Timber":{c:23,g:0},"Jan Paul van Hecke":{c:10,g:0},"Micky van de Ven":{c:19,g:1},"Virgil van Dijk":{c:90,g:12}, "Frenkie de Jong":{c:64,g:2},"Marten de Roon":{c:42,g:1},"Ryan Gravenberch":{c:25,g:1},"Teun Koopmeiners":{c:27,g:3},"Tijjani Reijnders":{c:30,g:7},"Guus Til":{c:6,g:1},"Quinten Timber":{c:10,g:1},"Mats Wieffer":{c:14,g:1}, "Brian Brobbey":{c:10,g:1},"Memphis Depay":{c:108,g:55},"Cody Gakpo":{c:48,g:19},"Justin Kluivert":{c:11,g:0},"Noa Lang":{c:15,g:3},"Donyell Malen":{c:51,g:13},"Crysencio Summerville":{c:0,g:0},"Wout Weghorst":{c:51,g:14},  // ── Japonya ── "Zion Suzuki":{c:24,g:0},"Keisuke Osako":{c:11,g:0},"Tomoki Hayakawa":{c:4,g:0}, "Yūto Nagatomo":{c:145,g:4},"Shogo Taniguchi":{c:38,g:1},"Ko Itakura":{c:40,g:2},"Tsuyoshi Watanabe":{c:11,g:0},"Takehiro Tomiyasu":{c:43,g:1},"Hiroki Ito":{c:24,g:1},"Ayumu Seko":{c:14,g:0},"Yukinari Sugawara":{c:21,g:2}, "Junnosuke Suzuki":{c:6,g:0},"Wataru Endo":{c:73,g:4},"Junya Ito":{c:69,g:15},"Daichi Kamada":{c:49,g:12},"Ritsu Doan":{c:65,g:11},"Ao Tanaka":{c:38,g:8},"Keito Nakamura":{c:25,g:10},"Kaishu Sano":{c:13,g:0},"Takefusa Kubo":{c:49,g:7},"Yuito Suzuki":{c:6,g:0}, "Koki Ogawa":{c:15,g:11},"Daizen Maeda":{c:27,g:4},"Ayase Ueda":{c:39,g:16},"Kento Shiogai":{c:2,g:0},"Keisuke Goto":{c:4,g:0},  // ── İsveç ── "Viktor Johansson":{c:12,g:0},"Kristoffer Nordfeldt":{c:20,g:0},"Jacob Widell Zetterstrom":{c:3,g:0}, "Hjalmar Ekdal":{c:12,g:0},"Gabriel Gudmundsson":{c:23,g:0},"Isak Hien":{c:28,g:0},"Gustaf Lagerbielke":{c:10,g:2},"Victor Lindelöf":{c:76,g:3},"Erik Smith":{c:1,g:0},"Carl Starfelt":{c:17,g:0},"Elliot Stroud":{c:0,g:0},"Daniel Svensson":{c:12,g:0}, "Taha Ali":{c:1,g:0},"Yasin Ayari":{c:20,g:3},"Lucas Bergvall":{c:9,g:0},"Jesper Karlström":{c:24,g:0},"Ken Sema":{c:33,g:5},"Mattias Svanberg":{c:40,g:2},"Besfort Zeneli":{c:7,g:0}, "Alexander Bernhardsson":{c:10,g:0},"Anthony Elanga":{c:29,g:6},"Viktor Gyökeres":{c:32,g:19},"Alexander Isak":{c:57,g:17},"Gustaf Nilsson":{c:9,g:3},"Benjamin Nygren":{c:10,g:3},  // ── Tunus ── "Aymen Dahmen":{c:37,g:0},"Sabri Ben Hessen":{c:2,g:0},"Abdelmouhib Chamakh":{c:1,g:0}, "Montassar Talbi":{c:62,g:4},"Dylan Bronn":{c:52,g:2},"Omar Rekik":{c:4,g:0},"Yan Valery":{c:21,g:0},"Ali Abdi":{c:45,g:7},"Moutaz Neffati":{c:5,g:0},"Raed Chikhaoui":{c:0,g:0},"Adam Arous":{c:1,g:0},"Mohamed Amine Ben Hamida":{c:12,g:0}, "Ellyes Skhiri":{c:81,g:4},"Hannibal Mejbri":{c:44,g:1},"Anis Ben Slimane":{c:39,g:4},"Hadj Mahmoud":{c:7,g:0},"Rani Khedira":{c:2,g:0},"Mortadha Ben Ouanes":{c:17,g:0}, "Elias Achouri":{c:29,g:4},"Ismaël Gharbi":{c:15,g:2},"Elias Saad":{c:14,g:4},"Sebastian Tounekti":{c:10,g:1},"Firas Chaouat":{c:28,g:6},"Khalil Ayari":{c:2,g:0},"Hazem Mastouri":{c:18,g:4},"Rayan Elloumi":{c:2,g:0},  // ── Belçika ── "Thibaut Courtois":{c:107,g:0},"Senne Lammens":{c:2,g:0},"Mike Penders":{c:0,g:0}, "Timothy Castagne":{c:62,g:2},"Zeno Debast":{c:26,g:1},"Maxim De Cuyper":{c:17,g:4},"Koni De Winter":{c:7,g:0},"Brandon Mechele":{c:7,g:1},"Thomas Meunier":{c:78,g:10},"Nathan Ngoy":{c:2,g:0},"Joaquin Seys":{c:4,g:0},"Arthur Theate":{c:32,g:1}, "Kevin De Bruyne":{c:117,g:36},"Amadou Onana":{c:27,g:1},"Nicolas Raskin":{c:11,g:1},"Youri Tielemans":{c:83,g:12},"Hans Vanaken":{c:32,g:7},"Axel Witsel":{c:136,g:12}, "Charles De Ketelaere":{c:28,g:5},"Jérémy Doku":{c:41,g:7},"Matias Fernandez-Pardo":{c:0,g:0},"Romelu Lukaku":{c:124,g:89},"Dodi Lukebakio":{c:29,g:5},"Diego Moreira":{c:2,g:0},"Alexis Saelemaekers":{c:23,g:2},"Leandro Trossard":{c:50,g:11},  // ── Mısır ── "Mohamed El Shenawy":{c:76,g:0},"Mostafa Shobeir":{c:8,g:0},"El Mahdy Soliman":{c:0,g:0},"Mohamed Alaa":{c:0,g:0}, "Mohamed Hany":{c:41,g:0},"Tarek Alaa":{c:2,g:0},"Hamdy Fathy":{c:62,g:3},"Ramy Rabia":{c:44,g:5},"Yasser Ibrahim":{c:16,g:1},"Hossam Abdelmaguid":{c:13,g:0},"Mohamed Abdelmonem":{c:35,g:3},"Ahmed Fatouh":{c:38,g:1},"Karim Hafez":{c:8,g:0}, "Marwan Attia":{c:33,g:1},"Mohanad Lasheen":{c:22,g:0},"Nabil Emad":{c:12,g:0},"Mahmoud Sabre":{c:15,g:1},"Ahmed Zizo":{c:62,g:5},"Emam Ashour":{c:28,g:0},"Mostafa Ziko":{c:1,g:1},"Mahmoud Trezeguet":{c:95,g:23},"Ibrahim Adel":{c:23,g:3},"Haissem Hassan":{c:3,g:0}, "Omar Marmoush":{c:48,g:11},"Mohamed Salah":{c:116,g:67},"Hamza Abdelkarim":{c:1,g:0},  // ── İran ── "Alireza Beiranvand":{c:85,g:0},"Hossein Hosseini":{c:13,g:0},"Payam Niazmand":{c:15,g:0}, "Danial Eiri":{c:0,g:0},"Ehsan Hajsafi":{c:145,g:7},"Saleh Hardani":{c:17,g:1},"Hossein Kanaani":{c:64,g:6},"Shoka Khalilzadeh":{c:57,g:2},"Milad Mohammadi":{c:75,g:1},"Ali Nemati Omid Noorafkan":{c:16,g:0},"Ramin Rezaeian":{c:73,g:7}, "Rouzbeh Cheshmi":{c:40,g:3},"Saeid Ezatolahi":{c:82,g:1},"Mehdi Ghaedi":{c:29,g:10},"Saman Ghoddos":{c:67,g:3},"Mohammad Ghorbani":{c:15,g:0},"Alireza Jahanbakhsh":{c:98,g:17},"Mohammad Mohebi":{c:36,g:14},"Amir Mohammad Razzaghinia":{c:3,g:0},"Mehdi Torabi":{c:52,g:7},"Aria Yousefi":{c:13,g:1}, "Ali Alipour":{c:13,g:1},"Dennis Dargahi":{c:0,g:0},"Amirhossein Hosseinzadeh":{c:17,g:5},"Mehdi Taremi":{c:104,g:60},  // ── Yeni Zelanda ── "Max Crocombe":{c:22,g:0},"Alex Paulsen":{c:6,g:0},"Michael Woud":{c:6,g:0}, "Tim Payne":{c:49,g:3},"Francis De Vries":{c:18,g:1},"Tyler Bindon":{c:23,g:3},"Michael Boxall":{c:61,g:1},"Liberato Cacace":{c:35,g:1},"Nando Pijnaker":{c:23,g:0},"Finn Surman":{c:17,g:2},"Callan Elliot":{c:9,g:0},"Tommy Smith":{c:56,g:2}, "Joe Bell":{c:31,g:1},"Matt Garbett":{c:35,g:5},"Marko Stamenic":{c:37,g:3},"Sarpreet Singh":{c:26,g:3},"Alex Rufer":{c:24,g:0},"Ryan Thomas":{c:25,g:3}, "Chris Wood":{c:88,g:45},"Eli Just":{c:42,g:9},"Kosta Barbarouses":{c:74,g:10},"Ben Waine":{c:30,g:9},"Ben Old":{c:22,g:2},"Callum McCowatt":{c:30,g:4},"Jesse Randall":{c:9,g:2},"Lachlan Bayliss":{c:2,g:0},  // ── İspanya ── "Unai Simón":{c:57,g:0},"David Raya":{c:12,g:0},"Joan García":{c:1,g:0}, "Marc Cucurella":{c:23,g:1},"Pau Cubarsí":{c:11,g:0},"Aymeric Laporte":{c:44,g:2},"Álex Grimaldo":{c:12,g:0},"Pedro Porro":{c:16,g:0},"Eric García":{c:19,g:0},"Marcos Llorente":{c:23,g:0},"Marc Pubill":{c:0,g:0}, "Gavi":{c:28,g:5},"Rodri":{c:61,g:4},"Pedri":{c:40,g:5},"Martín Zubimendi":{c:25,g:3},"Fabián Ruiz":{c:41,g:6},"Álex Baena":{c:15,g:2},"Mikel Merino":{c:41,g:10}, "Lamine Yamal":{c:25,g:6},"Nico Williams":{c:30,g:6},"Dani Olmo":{c:48,g:12},"Ferran Torres":{c:55,g:23},"Mikel Oyarzabal":{c:52,g:24},"Yéremy Pino":{c:21,g:4},"Borja Iglesias":{c:6,g:0},"Víctor Muñoz":{c:2,g:1},  // ── Yeşil Burun Adaları ── "Vozinha":{c:85,g:0},"Marcio Rosa":{c:10,g:0},"CJ dos Santos":{c:0,g:0}, "Steven Moreira":{c:18,g:0},"Wagner Pina":{c:12,g:0},"Joao Paulo":{c:40,g:1},"Sidny Lopes Cabral":{c:8,g:3},"Logan Costa":{c:26,g:0},"Pico":{c:44,g:0},"Kelvin Pires":{c:4,g:1},"Stopira":{c:60,g:4},"Diney":{c:29,g:2}, "Jamiro Monteiro":{c:53,g:5},"Telmo Arcanjo":{c:14,g:1},"Yannick Semedo":{c:10,g:1},"Laros Duarte":{c:12,g:0},"Deroy Duarte":{c:30,g:0},"Kevin Pina":{c:30,g:2}, "Ryan Mendes":{c:94,g:22},"Willy Semedo":{c:36,g:2},"Garry Rodrigues":{c:59,g:9},"Jovane Cabral":{c:25,g:2},"Nuno da Costa":{c:7,g:1},"Dailon Livramento":{c:20,g:7},"Gilson Benchimol":{c:21,g:5},"Helio Varela":{c:19,g:0},  // ── Uruguay ── "Fernando Muslera":{c:134,g:0},"Sergio Rochet":{c:35,g:0},"Santiago Mele":{c:8,g:0}, "Ronald Araújo":{c:27,g:1},"José María Giménez":{c:99,g:8},"Santiago Bueno":{c:8,g:0},"Sebastián Cáceres":{c:24,g:0},"Mathías Olivera":{c:35,g:2},"Guillermo Varela":{c:28,g:0},"Matías Viña":{c:43,g:1},"Joaquín Piquerez":{c:19,g:0},"Juan Manuel Sanabria":{c:5,g:1}, "Federico Valverde":{c:73,g:9},"Rodrigo Bentancur":{c:74,g:3},"Manuel Ugarte":{c:36,g:1},"Emiliano Martínez":{c:10,g:0},"Rodrigo Zalazar":{c:8,g:2},"Giorgian De Arrascaeta":{c:60,g:13},"Nicolás De La Cruz":{c:34,g:5},"Agustín Canobbio":{c:15,g:1},"Maximiliano Araújo":{c:28,g:3},"Brian Rodríguez":{c:32,g:4},"Facundo Pellistri":{c:39,g:2}, "Darwin Núñez":{c:38,g:13},"Federico Viñas":{c:11,g:2},"Rodrigo Aguirre":{c:10,g:3},  // ── Suudi Arabistan ── "Mohammed Al Owais":{c:63,g:0},"Nawaf Al Aqidi":{c:22,g:0},"Ahmed Al Kassar":{c:8,g:0}, "Abdulelah Al Amri":{c:41,g:1},"Hassan Tambakti":{c:51,g:0},"Jehad Thikri":{c:6,g:0},"Ali Lajami":{c:20,g:1},"Hassan Kadesh":{c:19,g:2},"Saud Abdulhamid":{c:53,g:1},"Mohammed Abu Al Shamat":{c:5,g:0},"Ali Majrashi":{c:20,g:0},"Moteb Al Harbi":{c:11,g:0},"Nawaf Boushal":{c:24,g:0}, "Mohammed Kanno":{c:75,g:8},"Abdullah Al Khaibari":{c:38,g:0},"Ziyad Al Johani":{c:11,g:0},"Nasser Al Dawsari":{c:42,g:0},"Musab Al Juwayr":{c:33,g:6},"Alaa Al Hajji":{c:1,g:0},"Salem Al Dawsari":{c:108,g:26},"Khalil Al Ghannam":{c:5,g:0},"Ayman Yahya":{c:25,g:0}, "Firas Al Buraikan":{c:69,g:15},"Saleh Al Shehri":{c:55,g:18},"Abdullah Al Hamdan":{c:48,g:11},  // ── Fransa ── "Mike Maignan":{c:38,g:0},"Robin Risser":{c:0,g:0},"Brice Samba":{c:4,g:0}, "Lucas Digne":{c:56,g:0},"Malo Gusto":{c:9,g:0},"Lucas Hernández":{c:41,g:0},"Theo Hernández":{c:42,g:2},"Ibrahima Konaté":{c:27,g:0},"Jules Koundé":{c:46,g:0},"Maxence Lacroix":{c:2,g:0},"William Saliba":{c:31,g:0},"Dayot Upamecano":{c:36,g:2}, "N'Golo Kanté":{c:67,g:2},"Manu Koné":{c:12,g:0},"Adrien Rabiot":{c:57,g:7},"Aurélien Tchouaméni":{c:44,g:3},"Warren Zaïre-Emery":{c:10,g:1}, "Maghnes Akliouche":{c:7,g:1},"Bradley Barcola":{c:18,g:3},"Rayan Cherki":{c:5,g:1},"Ousmane Dembélé":{c:58,g:7},"Désiré Doué":{c:6,g:2},"Jean-Philippe Mateta":{c:3,g:2},"Kylian Mbappé":{c:96,g:56},"Michael Olise":{c:15,g:4},"Marcus Thuram":{c:33,g:3},  // ── Senegal ── "Édouard Mendy":{c:56,g:0},"Mory Diaw":{c:5,g:0},"Yehvann Diouf":{c:2,g:0}, "Krépin Diatta":{c:60,g:2},"Antoine Mendy":{c:6,g:0},"Kalidou Koulibaly":{c:102,g:2},"El Hadji Malick Diouf":{c:19,g:1},"Mamadou Sarr":{c:7,g:0},"Moussa Niakhaté":{c:30,g:0},"Abdoulaye Seck":{c:22,g:4},"Ismail Jakobs":{c:29,g:0}, "Idrissa Gana Gueye":{c:130,g:7},"Pape Gueye":{c:41,g:5},"Lamine Camara":{c:32,g:7},"Habib Diarra":{c:20,g:4},"Pathé Ciss":{c:29,g:0},"Pape Matar Sarr":{c:39,g:4},"Bara Sapoko Ndiaye":{c:1,g:0}, "Sadio Mané":{c:127,g:55},"Ismaïla Sarr":{c:82,g:19},"Iliman Ndiaye":{c:39,g:4},"Assane Diao":{c:5,g:0},"Ibrahim Mbaye":{c:10,g:3},"Nicolas Jackson":{c:32,g:8},"Bamba Dieng":{c:22,g:2},"Cherif Ndiaye":{c:18,g:4},  // ── Irak ── "Fahad Talib":{c:21,g:0},"Jalal Hassan":{c:100,g:0},"Ahmed Basil":{c:14,g:0}, "Hussein Ali":{c:25,g:1},"Manaf Younis":{c:32,g:1},"Zaid Tahseen":{c:26,g:1},"Rebin Sulaka":{c:54,g:1},"Akam Hashem":{c:12,g:1},"Merchas Doski":{c:30,g:0},"Ahmed Yahya":{c:19,g:0},"Zaid Ismail":{c:5,g:0},"Frans Putros":{c:26,g:0},"Mustafa Saadoon":{c:15,g:0}, "Amir Al-Ammari":{c:49,g:3},"Kevin Yakob":{c:7,g:0},"Zidane Iqbal":{c:23,g:2},"Aimar Sher":{c:6,g:0},"Ibrahim Bayesh":{c:74,g:8},"Ahmed Qasim":{c:1,g:0},"Youssef Amyn":{c:25,g:2},"Marko Farji":{c:10,g:0}, "Ali Jasim":{c:35,g:2},"Ali Al-Hamadi":{c:18,g:5},"Ali Yousef":{c:6,g:1},"Aymen Hussein":{c:93,g:33},"Mohanad Ali":{c:71,g:27},  // ── Norveç ── "Ørjan Nyland":{c:69,g:0},"Egil Selvik":{c:6,g:0},"Sander Tangvik":{c:0,g:0}, "Julian Ryerson":{c:41,g:1},"Kristoffer Ajer":{c:50,g:2},"Leo Østigård":{c:36,g:1},"David Møller Wolfe":{c:20,g:1},"Marcus Pedersen":{c:31,g:0},"Torbjørn Heggem":{c:13,g:0},"Fredrik André Bjørkan":{c:19,g:1},"Henrik Falchener":{c:1,g:0},"Sondre Langås":{c:2,g:0}, "Martin Ødegaard":{c:67,g:4},"Sander Berge":{c:64,g:1},"Patrick Berg":{c:41,g:0},"Kristian Thorstvedt":{c:35,g:4},"Morten Thorsby":{c:30,g:0},"Thelo Aasgaard":{c:6,g:5},"Andreas Schjelderup":{c:10,g:1},"Jens Petter Hauge":{c:14,g:1},"Fredrik Aursnes":{c:20,g:1},"Oscar Bobb":{c:18,g:2},"Antonio Nusa":{c:22,g:7}, "Erling Haaland":{c:49,g:55},"Alexander Sørloth":{c:70,g:26},"Jørgen Strand Larsen":{c:26,g:4},  // ── Arjantin ── "Emiliano Martínez":{c:59,g:0},"Gerónimo Rulli":{c:7,g:0},"Juan Musso":{c:3,g:0}, "Gonzalo Montiel":{c:38,g:2},"Nahuel Molina":{c:58,g:1},"Lisandro Martínez":{c:26,g:1},"Nicolás Otamendi":{c:130,g:8},"Leonardo Balerdi":{c:11,g:0},"Cristian Romero":{c:49,g:3},"Facundo Medina":{c:7,g:0},"Nicolás Tagliafico":{c:75,g:1}, "Leandro Paredes":{c:77,g:5},"Rodrigo De Paul":{c:85,g:2},"Exequiel Palacios":{c:38,g:0},"Enzo Fernández":{c:40,g:6},"Alexis Mac Allister":{c:44,g:6},"Giovani Lo Celso":{c:65,g:4},"Valentín Barco":{c:2,g:1}, "Lionel Messi":{c:198,g:116},"Nico Paz":{c:8,g:1},"Thiago Almada":{c:14,g:4},"Nicolás González":{c:50,g:6},"Giuliano Simeone":{c:11,g:1},"Lautaro Martínez":{c:75,g:36},"Jose Manuel López":{c:3,g:0},"Julián Álvarez":{c:51,g:14},  // ── Cezayir ── "Oussama Benbot":{c:2,g:0},"Melvin Masstil":{c:1,g:0},"Luca Zidane":{c:6,g:0}, "Achraf Abada":{c:6,g:1},"Rayan Ait Nouri":{c:27,g:0},"Zinedine Belaid":{c:9,g:1},"Rafik Belghali":{c:11,g:1},"Ramy Bensebaini":{c:81,g:7},"Samir Chergui":{c:4,g:0},"Jaouen Hadjam":{c:16,g:3},"Aissa Mandi":{c:116,g:7},"Mohamed Amine Tougai":{c:28,g:2}, "Houssem Aouar":{c:19,g:6},"Nabil Bentaleb":{c:58,g:6},"Hicham Boudaoui":{c:32,g:0},"Fares Chaibi":{c:28,g:3},"Ibrahim Maza":{c:15,g:2},"Yassine Titraoui":{c:5,g:0},"Ramiz Zerrouki":{c:51,g:3}, "Mohamed Amine Amoura":{c:44,g:19},"Nadir Benbouali":{c:2,g:1},"Adil Boulbina":{c:10,g:6},"Fares Ghedjemis":{c:1,g:1},"Amine Gouiri":{c:21,g:8},"Riyad Mahrez":{c:113,g:38},"Anis Hadj Moussa":{c:13,g:0},  // ── Avusturya ── "Alexander Schlager":{c:25,g:0},"Florian Wiegele":{c:1,g:0},"Patrick Pentz":{c:18,g:0}, "David Affengruber":{c:1,g:0},"Kevin Danso":{c:31,g:0},"Stefan Posch":{c:51,g:5},"David Alaba":{c:112,g:15},"Philipp Lienhart":{c:40,g:3},"Philipp Mwene":{c:29,g:0},"Alexander Prass":{c:18,g:0},"Marco Friedl":{c:10,g:0},"Michael Svoboda":{c:4,g:0}, "Xaver Schlager":{c:50,g:4},"Nicolas Seiwald":{c:46,g:1},"Marcel Sabitzer":{c:97,g:25},"Florian Grillitsch":{c:58,g:1},"Carney Chukwuemeka":{c:2,g:1},"Romano Schmid":{c:33,g:3},"Christoph Baumgartner":{c:58,g:19},"Konrad Laimer":{c:56,g:7},"Patrick Wimmer":{c:30,g:1},"Paul Wanner":{c:2,g:0},"Alessandro Schopf":{c:35,g:6}, "Marko Arnautovic":{c:132,g:47},"Michael Gregoritsch":{c:74,g:24},"Sasa Kalajdzic":{c:21,g:4},  // ── Ürdün ── "Yazid Abulaila":{c:75,g:0},"Abdallah Al-Fakhouri":{c:11,g:0},"Nour Bani Attiah":{c:4,g:0}, "Ihsan Haddad":{c:91,g:2},"Saed Al-Rosan":{c:20,g:2},"Mohammad Abualnadi":{c:17,g:0},"Husam Abu Dahab":{c:17,g:0},"Mohammed Abu Hashish":{c:55,g:1},"Yazan Al-Arab":{c:79,g:3},"Anas Badawi":{c:1,g:0},"Abdullah Nasib":{c:64,g:3},"Saleem Obaid":{c:10,g:0}, "Mohammed Al-Dawoud":{c:12,g:1},"Nizar Al-Rashdan":{c:46,g:4},"Noor Al-Rawabdeh":{c:67,g:3},"Rajaei Ayed":{c:72,g:0},"Amer Jamous":{c:18,g:1},"Ibrahim Sadeh":{c:56,g:3},"Mohannad Abu Taha":{c:28,g:1}, "Mohammed Abu Zrayq":{c:40,g:5},"Mousa Al-Tamari":{c:91,g:24},"Ali Azaizeh":{c:3,g:0},"Odeh Al-Fakhouri":{c:9,g:1},"Ali Olwan":{c:65,g:29},"Ibrahim Sabra":{c:9,g:1},"Mahmoud Al-Mardi":{c:88,g:9},  // ── Portekiz ── "Diogo Costa":{c:42,g:0},"José Sá":{c:4,g:0},"Rui Silva":{c:2,g:0}, "Rúben Dias":{c:74,g:3},"João Cancelo":{c:66,g:12},"Diogo Dalot":{c:33,g:3},"Nuno Mendes":{c:43,g:1},"Nélson Semedo":{c:48,g:0},"Matheus Nunes":{c:19,g:2},"Gonçalo Inacio":{c:20,g:2},"Renato Veiga":{c:11,g:1},"Tomás Araújo":{c:3,g:0}, "Bruno Fernandes":{c:87,g:28},"Bernardo Silva":{c:107,g:14},"Vitinha":{c:37,g:0},"João Neves":{c:21,g:3},"Rúben Neves":{c:65,g:1},"Samú Costa":{c:4,g:0}, "Cristiano Ronaldo":{c:226,g:143},"Rafael Leão":{c:43,g:5},"João Félix":{c:52,g:12},"Gonçalo Ramos":{c:24,g:10},"Pedro Neto":{c:23,g:2},"Francisco Conceição":{c:15,g:3},"Gonçalo Guedes":{c:33,g:7},"Francisco Trincão":{c:17,g:3},  // ── Kongo Demokratik Cumhuriyeti ── "Lionel Mpasi":{c:27,g:0},"Timothy Fayulu":{c:3,g:0},"Matthieu Epolo":{c:1,g:0}, "Chancel Mbemba":{c:107,g:7},"Axel Tuanzebe":{c:12,g:1},"Arthur Masuaku":{c:44,g:4},"Gedeon Kalulu":{c:27,g:0},"Joris Kayembe":{c:24,g:0},"Aaron Wan-Bissaka":{c:10,g:0},"Aaron Tshibola":{c:16,g:1},"Steve Kapuadi":{c:3,g:0},"Dylan Batubinsika":{c:14,g:1}, "Noah Sadiki":{c:18,g:0},"Charles Pickel":{c:33,g:1},"Edo Kayembe":{c:41,g:2},"Samuel Moutoussamy":{c:56,g:0},"Ngal'ayel Mukau":{c:12,g:0},"Nathanaël Mbuku":{c:17,g:2},"Meschak Elia":{c:68,g:12},"Brian Cipenga":{c:7,g:0},"Gaël Kakuta":{c:30,g:5},"Théo Bongonda":{c:37,g:7}, "Simon Banza":{c:14,g:2},"Yoane Wissa":{c:36,g:9},"Fiston Mayele":{c:37,g:6},"Cédric Bakambu":{c:68,g:21},  // ── Özbekistan ── "Utkir Yusupov":{c:39,g:0},"Botirali Ergashev":{c:2,g:0},"Abduvokhid Nematov":{c:7,g:0}, "Avazbek Ulmasaliev":{c:0,g:0},"Jakhongir Urozov":{c:2,g:0},"Rustamjon Ashurmatov":{c:47,g:1},"Umarbek Eshmurodov":{c:29,g:0},"Abdukodir Khusanov":{c:25,g:0},"Abdulla Abdullaev":{c:16,g:0},"Farrukh Sayfiev":{c:44,g:1},"Khojiakbar Alijonov":{c:40,g:2},"Sherzod Nasrullaev":{c:29,g:2},"Behruz Kerimov":{c:2,g:0}, "Sherzod Esanov":{c:0,g:0},"Umarali Rakhmonaliev":{c:1,g:0},"Akmal Mozgovoy":{c:23,g:1},"Otabek Shukurov":{c:82,g:9},"Jamshid Iskanderov":{c:37,g:4},"Azizjon Ganiev":{c:18,g:0},"Abbosek Fayzullaev":{c:30,g:8},"Jaloliddin Masharipov":{c:74,g:12},"Dostonbek Khamdamov":{c:33,g:5},"Oston Urunov":{c:40,g:10}, "Azizbek Amonov":{c:11,g:2},"Igor Sergeev":{c:81,g:24},"Eldor Shomurodov":{c:90,g:44},  // ── Kolombiya ── "David Ospina":{c:129,g:0},"Álvaro Montero":{c:11,g:0},"Camilo Vargas":{c:40,g:0}, "Daniel Muñoz":{c:44,g:3},"Jhon Lucumí":{c:35,g:1},"Santiago Arias":{c:66,g:0},"Davinson Sánchez":{c:77,g:3},"Johan Mojica":{c:43,g:1},"Yerry Mina":{c:52,g:8},"Willer Ditta":{c:3,g:0},"Deiver Machado":{c:14,g:0}, "Jorge Carrascal":{c:22,g:2},"Kevin Castaño":{c:24,g:0},"Gustavo Puerta":{c:4,g:1},"Juan Fernando Quintero":{c:47,g:6},"Juan Portilla":{c:8,g:0},"Jefferson Lerma":{c:64,g:5},"Richard Ríos":{c:30,g:2},"Jhon Arias":{c:36,g:4},"James Rodríguez":{c:124,g:31},"Jaminton Campaz":{c:9,g:1}, "Luis Díaz":{c:72,g:21},"Jhon Córdoba":{c:21,g:6},"Luis Suárez":{c:10,g:4},"Andrés Gómez":{c:6,g:2},"Cucho Hernández":{c:7,g:2},  // ── İngiltere ── "Jordan Pickford":{c:82,g:0},"Dean Henderson":{c:4,g:0},"James Trafford":{c:1,g:0}, "Reece James":{c:22,g:1},"Ezri Konsa":{c:18,g:1},"Jarell Quansah":{c:1,g:0},"John Stones":{c:87,g:3},"Marc Guéhi":{c:27,g:1},"Dan Burn":{c:6,g:0},"Nico O'Reilly":{c:3,g:0},"Djed Spence":{c:4,g:0},"Tino Livramento":{c:5,g:0}, "Declan Rice":{c:72,g:6},"Elliot Anderson":{c:7,g:0},"Kobbie Mainoo":{c:12,g:0},"Jordan Henderson":{c:89,g:3},"Morgan Rogers":{c:13,g:1},"Jude Bellingham":{c:46,g:6},"Eberechi Eze":{c:16,g:3}, "Harry Kane":{c:112,g:78},"Ivan Toney":{c:7,g:1},"Ollie Watkins":{c:20,g:6},"Bukayo Saka":{c:48,g:14},"Marcus Rashford":{c:70,g:18},"Anthony Gordon":{c:17,g:2},"Noni Madueke":{c:10,g:1},  // ── Hırvatistan ── "Dominik Livakovic":{c:73,g:0},"Dominik Kotarski":{c:3,g:0},"Ivor Pandur":{c:0,g:0}, "Josko Gvardiol":{c:46,g:4},"Duje Caleta-Car":{c:38,g:1},"Josip Sutalo":{c:31,g:0},"Josip Stanisic":{c:29,g:0},"Marin Pongracic":{c:18,g:0},"Martin Erlic":{c:12,g:1},"Luka Vuskovic":{c:4,g:1}, "Luka Modric":{c:196,g:28},"Mateo Kovacic":{c:111,g:5},"Mario Pasalic":{c:83,g:11},"Nikola Vlasic":{c:61,g:10},"Luka Sucic":{c:19,g:1},"Martin Baturina":{c:17,g:1},"Kristijan Jakic":{c:16,g:2},"Petar Sucic":{c:15,g:1},"Nikola Moro":{c:9,g:0},"Toni Fruk":{c:7,g:1}, "Ivan Perisic":{c:152,g:38},"Andrej Kramaric":{c:114,g:36},"Ante Budimir":{c:36,g:6},"Marco Pasalic":{c:13,g:1},"Petar Musa":{c:10,g:1},"Igor Matanovic":{c:8,g:2},  // ── Gana ── "Benjamin Asare":{c:10,g:0},"Lawrence Ati-Zigi":{c:28,g:0},"Joseph Anang":{c:1,g:0}, "Baba Abdul Rahman":{c:52,g:1},"Gideon Mensah":{c:39,g:0},"Marvin Senaya":{c:1,g:0},"Alidu Seidu":{c:23,g:1},"Abdul Mumin":{c:4,g:0},"Jerome Opoku":{c:10,g:1},"Jonas Adjetey":{c:9,g:0},"Kojo Oppong Peprah":{c:4,g:0},"Derrick Luckassen":{c:1,g:0}, "Elisha Owusu":{c:19,g:0},"Thomas Partey":{c:56,g:15},"Kwasi Sibo":{c:7,g:0},"Augustine Boakye":{c:0,g:0},"Caleb Yirenkyi":{c:10,g:0},"Abdul Fatawu Issahaku":{c:27,g:3}, "Kamal Deen Sulemana":{c:27,g:1},"Christopher Bonsu Baah":{c:8,g:0},"Ernest Nuamah":{c:18,g:4},"Antoine Semenyo":{c:34,g:3},"Brandon Thomas-Asante":{c:7,g:1},"Prince Kwabena Adu":{c:4,g:0},"Iñaki Williams":{c:25,g:2},"Jordan Ayew":{c:117,g:33},  // ── Panama ── "Luis Mejía":{c:56,g:0},"César Samudio":{c:4,g:0}, "César Blackman":{c:38,g:3},"Jorge Gutiérrez":{c:17,g:0},"Amir Murillo":{c:92,g:9},"Fidel Escobar":{c:97,g:4},"Andrés Andrade":{c:48,g:1},"Edgardo Fariña":{c:16,g:0},"José Córdoba":{c:31,g:1},"Éric Davis":{c:105,g:9},"Jiovany Ramos":{c:21,g:1},"Roderick Miller":{c:49,g:2}, "Aníbal Godoy":{c:159,g:4},"Adalberto Carrasquilla":{c:73,g:3},"Carlos Harvey":{c:26,g:3},"Cristian Martínez":{c:64,g:2},"José Luis Rodríguez":{c:68,g:8},"César Yanis":{c:55,g:5},"Yoel Bárcenas":{c:102,g:10},"Alberto Quintero":{c:140,g:7},"Azarias Londoño":{c:10,g:0}, "Ismael Díaz":{c:55,g:17},"Cecilio Waterman":{c:53,g:14},"José Fajardo":{c:66,g:17},"Tomás Rodríguez":{c:12,g:3},
-};
-function getStats(name){
-  const n=normalizeStr(name);
-  return liveStats[name]||liveStats[Object.keys(liveStats).find(k=>normalizeStr(k)===n)]||
-    PLAYER_STATS[name]||PLAYER_STATS[Object.keys(PLAYER_STATS).find(k=>normalizeStr(k)===n)];
-}
-
-let ALL_MATCHES=[{id:1,home:"Meksika",away:"Güney Afrika",utc:"2026-06-11T20:00:00Z",group:"A",venue:"Mexico City"},{id:2,home:"Güney Kore",away:"Çekya",utc:"2026-06-12T03:00:00Z",group:"A",venue:"Guadalajara"},{id:3,home:"Kanada",away:"Bosna Hersek",utc:"2026-06-12T20:00:00Z",group:"B",venue:"Toronto"},{id:4,home:"ABD",away:"Paraguay",utc:"2026-06-13T02:00:00Z",group:"D",venue:"Los Angeles"},{id:5,home:"Katar",away:"İsviçre",utc:"2026-06-13T20:00:00Z",group:"B",venue:"Santa Clara"},{id:6,home:"Brezilya",away:"Fas",utc:"2026-06-13T23:00:00Z",group:"C",venue:"New York/NJ"},{id:7,home:"Haiti",away:"İskoçya",utc:"2026-06-14T02:00:00Z",group:"C",venue:"Boston"},{id:8,home:"Avustralya",away:"Türkiye",utc:"2026-06-14T05:00:00Z",group:"D",venue:"Vancouver"},{id:9,home:"Almanya",away:"Curaçao",utc:"2026-06-14T18:00:00Z",group:"E",venue:"Houston"},{id:10,home:"Hollanda",away:"Japonya",utc:"2026-06-14T21:00:00Z",group:"F",venue:"Dallas"},{id:11,home:"Fildişi Sahili",away:"Ekvador",utc:"2026-06-15T00:00:00Z",group:"E",venue:"Philadelphia"},{id:12,home:"Tunus",away:"İsveç",utc:"2026-06-15T03:00:00Z",group:"F",venue:"Monterrey"},{id:13,home:"İspanya",away:"Yeşil Burun Adaları",utc:"2026-06-15T17:00:00Z",group:"H",venue:"Atlanta"},{id:14,home:"Belçika",away:"Mısır",utc:"2026-06-15T20:00:00Z",group:"G",venue:"Seattle"},{id:15,home:"Suudi Arabistan",away:"Uruguay",utc:"2026-06-15T23:00:00Z",group:"H",venue:"Miami"},{id:16,home:"İran",away:"Yeni Zelanda",utc:"2026-06-16T02:00:00Z",group:"G",venue:"Los Angeles"},{id:17,home:"Fransa",away:"Senegal",utc:"2026-06-16T20:00:00Z",group:"I",venue:"New York/NJ"},{id:18,home:"Norveç",away:"Irak",utc:"2026-06-16T23:00:00Z",group:"I",venue:"Boston"},{id:19,home:"Arjantin",away:"Cezayir",utc:"2026-06-17T02:00:00Z",group:"J",venue:"Kansas City"},{id:20,home:"Avusturya",away:"Ürdün",utc:"2026-06-17T05:00:00Z",group:"J",venue:"Santa Clara"},{id:21,home:"Portekiz",away:"Kongo Demokratik Cumhuriyeti",utc:"2026-06-17T18:00:00Z",group:"K",venue:"Houston"},{id:22,home:"İngiltere",away:"Hırvatistan",utc:"2026-06-17T21:00:00Z",group:"L",venue:"Dallas"},{id:23,home:"Gana",away:"Panama",utc:"2026-06-18T00:00:00Z",group:"L",venue:"Toronto"},{id:24,home:"Özbekistan",away:"Kolombiya",utc:"2026-06-18T03:00:00Z",group:"K",venue:"Mexico City"},{id:25,home:"Güney Afrika",away:"Çekya",utc:"2026-06-18T17:00:00Z",group:"A",venue:"Atlanta"},{id:26,home:"İsviçre",away:"Bosna Hersek",utc:"2026-06-18T20:00:00Z",group:"B",venue:"Los Angeles"},{id:27,home:"Kanada",away:"Katar",utc:"2026-06-18T23:00:00Z",group:"B",venue:"Vancouver"},{id:28,home:"Meksika",away:"Güney Kore",utc:"2026-06-19T02:00:00Z",group:"A",venue:"Guadalajara"},{id:29,home:"ABD",away:"Avustralya",utc:"2026-06-19T20:00:00Z",group:"D",venue:"Seattle"},{id:30,home:"İskoçya",away:"Fas",utc:"2026-06-19T20:00:00Z",group:"C",venue:"Boston"},{id:31,home:"Brezilya",away:"Haiti",utc:"2026-06-20T02:00:00Z",group:"C",venue:"Philadelphia"},{id:32,home:"Paraguay",away:"Türkiye",utc:"2026-06-20T05:00:00Z",group:"D",venue:"Santa Clara"},{id:33,home:"Hollanda",away:"İsveç",utc:"2026-06-20T18:00:00Z",group:"F",venue:"Houston"},{id:34,home:"Almanya",away:"Fildişi Sahili",utc:"2026-06-20T21:00:00Z",group:"E",venue:"Toronto"},{id:35,home:"Ekvador",away:"Curaçao",utc:"2026-06-21T01:00:00Z",group:"E",venue:"Kansas City"},{id:36,home:"İspanya",away:"Suudi Arabistan",utc:"2026-06-21T17:00:00Z",group:"H",venue:"Atlanta"},{id:37,home:"Belçika",away:"İran",utc:"2026-06-21T20:00:00Z",group:"G",venue:"Los Angeles"},{id:38,home:"Uruguay",away:"Yeşil Burun Adaları",utc:"2026-06-21T23:00:00Z",group:"H",venue:"Miami"},{id:39,home:"Tunus",away:"Japonya",utc:"2026-06-22T05:00:00Z",group:"F",venue:"Monterrey"},{id:40,home:"Arjantin",away:"Avusturya",utc:"2026-06-22T18:00:00Z",group:"J",venue:"Dallas"},{id:41,home:"Fransa",away:"Irak",utc:"2026-06-22T22:00:00Z",group:"I",venue:"Philadelphia"},{id:42,home:"Norveç",away:"Senegal",utc:"2026-06-23T01:00:00Z",group:"I",venue:"New York/NJ"},{id:43,home:"Portekiz",away:"Özbekistan",utc:"2026-06-23T18:00:00Z",group:"K",venue:"Houston"},{id:44,home:"İngiltere",away:"Gana",utc:"2026-06-23T21:00:00Z",group:"L",venue:"Boston"},{id:45,home:"Panama",away:"Hırvatistan",utc:"2026-06-24T00:00:00Z",group:"L",venue:"Toronto"},{id:46,home:"Ürdün",away:"Cezayir",utc:"2026-06-24T04:00:00Z",group:"J",venue:"Santa Clara"},{id:47,home:"Kanada",away:"İsviçre",utc:"2026-06-24T20:00:00Z",group:"B",venue:"Vancouver"},{id:48,home:"Katar",away:"Bosna Hersek",utc:"2026-06-24T20:00:00Z",group:"B",venue:"Seattle"},{id:49,home:"İskoçya",away:"Brezilya",utc:"2026-06-24T23:00:00Z",group:"C",venue:"Miami"},{id:50,home:"Fas",away:"Haiti",utc:"2026-06-24T23:00:00Z",group:"C",venue:"Atlanta"},{id:51,home:"Kolombiya",away:"Kongo Demokratik Cumhuriyeti",utc:"2026-06-25T04:00:00Z",group:"K",venue:"Guadalajara"},{id:52,home:"Ekvador",away:"Almanya",utc:"2026-06-25T21:00:00Z",group:"E",venue:"New York/NJ"},{id:53,home:"Curaçao",away:"Fildişi Sahili",utc:"2026-06-25T21:00:00Z",group:"E",venue:"Philadelphia"},{id:54,home:"Tunus",away:"Hollanda",utc:"2026-06-26T00:00:00Z",group:"F",venue:"Kansas City"},{id:55,home:"Japonya",away:"İsveç",utc:"2026-06-26T00:00:00Z",group:"F",venue:"Dallas"},{id:56,home:"Norveç",away:"Fransa",utc:"2026-06-26T20:00:00Z",group:"I",venue:"Boston"},{id:57,home:"Senegal",away:"Irak",utc:"2026-06-26T20:00:00Z",group:"I",venue:"Toronto"},{id:58,home:"Yeni Zelanda",away:"Belçika",utc:"2026-06-27T04:00:00Z",group:"G",venue:"Vancouver"},{id:59,home:"Mısır",away:"İran",utc:"2026-06-27T04:00:00Z",group:"G",venue:"Seattle"},{id:60,home:"Uruguay",away:"İspanya",utc:"2026-06-27T01:00:00Z",group:"H",venue:"Guadalajara"},{id:61,home:"Yeşil Burun Adaları",away:"Suudi Arabistan",utc:"2026-06-27T01:00:00Z",group:"H",venue:"Houston"},{id:62,home:"Panama",away:"İngiltere",utc:"2026-06-27T22:00:00Z",group:"L",venue:"New York/NJ"},{id:63,home:"Hırvatistan",away:"Gana",utc:"2026-06-27T22:00:00Z",group:"L",venue:"Philadelphia"},{id:64,home:"Kolombiya",away:"Portekiz",utc:"2026-06-27T23:30:00Z",group:"K",venue:"Miami"},{id:65,home:"Özbekistan",away:"Kongo Demokratik Cumhuriyeti",utc:"2026-06-28T00:30:00Z",group:"K",venue:"Atlanta"},{id:66,home:"Ürdün",away:"Arjantin",utc:"2026-06-28T03:00:00Z",group:"J",venue:"Dallas"},{id:67,home:"Cezayir",away:"Avusturya",utc:"2026-06-28T03:00:00Z",group:"J",venue:"Kansas City"},{id:68,home:"Meksika",away:"Çekya",utc:"2026-06-25T02:00:00Z",group:"A",venue:"Mexico City"},{id:69,home:"Güney Kore",away:"Güney Afrika",utc:"2026-06-25T02:00:00Z",group:"A",venue:"Monterrey"},{id:70,home:"ABD",away:"Türkiye",utc:"2026-06-26T03:00:00Z",group:"D",venue:"Los Angeles"},{id:71,home:"Paraguay",away:"Avustralya",utc:"2026-06-26T03:00:00Z",group:"D",venue:"Santa Clara"}];
-
-// ════════════════════════════════════════════════
-//  HELPERS & PUAN HESAPLAMA (Parçalı Eşleşme)
-// ════════════════════════════════════════════════
-const deadline=m=>new Date(new Date(m.utc).getTime()-3600000);
-const isClosed=m=>new Date()>=deadline(m);
-const isFinished=m=>!!(m&&m.result);
-const fmtTR=u=>new Date(u).toLocaleString("tr-TR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit",timeZone:"Europe/Istanbul"});
-const minsLeft=m=>Math.max(0,Math.round((deadline(m)-new Date())/60000));
-
-const normalizeStr = s => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-function cleanName(s){ 
-  // Takım bilgisini ve emoji/boşlukları temizle
-  return normalizeStr((s||"").replace(/^\[.*?\]\s*/, '').replace('⚽ ', '').trim()); 
-}
-
-function calcPts(p,r){
-  if(!r||!p)return 0;let pts=0;
-  const pH=parseInt(p.homeScore),pA=parseInt(p.awayScore),rH=parseInt(r.homeScore),rA=parseInt(r.awayScore);
-  const pW=pH>pA?"h":pA>pH?"a":"d",rW=rH>rA?"h":rA>rH?"a":"d";
-  if(pW===rW)pts+=3;
-  if(pH===rH&&pA===rA)pts+=2;
-  
-  const adminScorers = (r.scorers||[]).map(cleanName).filter(Boolean);
-  (p.scorers||[]).forEach(s=>{
-    const uS = cleanName(s);
-    if(uS.length > 1 && adminScorers.some(aS => aS.length > 1 && (uS.includes(aS) || aS.includes(uS)))) {
-      pts+=7;
-    }
-  });
-  return pts;
-}
-
-function showToast(msg,ms=3000){
-  const t=document.getElementById("toast");
-  t.textContent=msg;t.style.display="block";
-  clearTimeout(t._t);t._t=setTimeout(()=>t.style.display="none",ms);
-}
-function copyLink(){
-  navigator.clipboard.writeText(location.href).catch(()=>{
-    const e=document.createElement("textarea");e.value=location.href;document.body.appendChild(e);e.select();document.execCommand("copy");e.remove();
-  });
-  showToast("Link kopyalandı!");
-}
-
-function setCookie(k,v){document.cookie=`${k}=${encodeURIComponent(v)};max-age=${365*24*3600};path=/;SameSite=Lax`;}
-function getCookie(k){const m=document.cookie.match(new RegExp('(?:^|; )'+k+'=([^;]*)'));return m?decodeURIComponent(m[1]):null;}
-function delCookie(k){document.cookie=`${k}=;max-age=0;path=/`;}
-
-// ════════════════════════════════════════════════
-//  STATE
-// ════════════════════════════════════════════════
-let db=null,localMode=false;
-let currentUser=null,isAdmin=false;
-let matches=ALL_MATCHES.map(m=>({...m}));
-let users={};
-let currentTab="upcoming";
-let predictMatch=null,predData={homeScore:"",awayScore:"",scorers:[""]};
-let scorerSlot=null,scorerSearch="";
-let ogSlot=null,ogTeam=null,ogPlayerSearch="";
-let scorerListSearch="",showOGForm=false,ogFormTeam=null,ogFormSearch="";
-let autoLoading=false,aiLoading=false;
-let anthropicApiKey=localStorage.getItem("wc26_apikey")||"";
-let liveStats={},liveStatsLoading=false;
-const apiHdrs=()=>({"Content-Type":"application/json","x-api-key":anthropicApiKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"});
-
-// Admin State
-let adminEditMatch=null;
-let adminEditData={homeScore:"",awayScore:"",scorers:[""]};
-let adminScorerListSearch="",adminShowOGForm=false,adminOgFormTeam=null,adminOgFormSearch="";
-let autoFetchTimer=null;
-
-// ════════════════════════════════════════════════
-//  FIREBASE BAŞLATMA
-// ════════════════════════════════════════════════
-async function fbWrite(path,val){if(db)await db.ref(path).set(val);}
-
-function startApp(){
-  if(db){
-    db.ref("wc26/matches").on("value",snap=>{if(snap.exists()&&Array.isArray(snap.val())&&snap.val().length)matches=snap.val();rerender();});
-    db.ref("wc26/users").on("value",snap=>{
-      if(snap.exists()){
-        users=snap.val()||{};
-      }
-      rerender();
-    });
-  }
-
-  if(autoFetchTimer)clearInterval(autoFetchTimer);
-  autoFetchTimer=setInterval(()=>autoFetch(true),3600000);
-  document.getElementById("auto-badge").style.display="inline-flex";
-
-  const adminSaved=getCookie("wc26_admin");
-  if(adminSaved==="1"){
-    isAdmin=true;currentUser="__admin__";
-    enterApp();
-    return;
-  }
-  const saved=getCookie("wc26_user");
-  if(saved&&saved!=="admin"){
-    currentUser=saved;
-    enterApp();
-  } else {
-    showRawPage("login");
-  }
-}
-
-// ════════════════════════════════════════════════
-//  SAYFA GEÇİŞLERİ
-// ════════════════════════════════════════════════
-function showRawPage(name){
-  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
-  const pg=document.getElementById("pg-"+name);
-  if(pg)pg.classList.add("active");
-  document.getElementById("main-nav").style.display="none";
-  document.getElementById("admin-nav").style.display="none";
-  document.getElementById("app-shell").style.display="none";
-  document.getElementById("share-url-txt").textContent=location.href;
-}
-
-function enterApp(){
-  document.getElementById("app-shell").style.display="flex";
-  document.getElementById("pg-login").classList.remove("active");
-  if(isAdmin){
-    document.getElementById("main-nav").style.display="none";
-    document.getElementById("admin-nav").style.display="flex";
-    showMain("admin");
-  } else {
-    document.getElementById("main-nav").style.display="flex";
-    document.getElementById("admin-nav").style.display="none";
-    showMain("matches");
-  }
-}
-
-function showMain(name){
-  document.querySelectorAll("#app-shell .page").forEach(p=>p.classList.remove("active"));
-  const pg=document.getElementById("pg-"+name);
-  if(pg)pg.classList.add("active");
-  ["nb-matches","nb-lb"].forEach(id=>{
-    const el=document.getElementById(id);if(el)el.classList.remove("active");
-  });
-  if(name==="matches"){const el=document.getElementById("nb-matches");if(el)el.classList.add("active");}
-  if(name==="lb"){const el=document.getElementById("nb-lb");if(el)el.classList.add("active");}
-  rerender();
-}
-
-function rerender(){
-  renderSidebar();
-  const active=document.querySelector("#app-shell .page.active");
-  if(!active)return;
-  const id=active.id;
-  if(id==="pg-matches")renderMatches();
-  else if(id==="pg-lb")renderLB();
-  else if(id==="pg-admin")renderAdmin();
-  else if(id==="pg-predict")renderPredictPage();
-  else if(id==="pg-admin-edit")renderAdminEditPage();
-}
-
-// ════════════════════════════════════════════════
-//  AUTH
-// ════════════════════════════════════════════════
-function doLogin(){
-  const name=document.getElementById("li-name").value.trim();
-  const err=document.getElementById("li-err");
-  if(!name||name.length<2){err.textContent="En az 2 karakter gir.";err.style.display="block";return;}
-  err.style.display="none";
-  currentUser=name;isAdmin=false;
-  setCookie("wc26_user",name);
-  
-  if(!users[currentUser]){
-    users[currentUser]={points:0, predictions:{}};
-    persistUsers();
-  }
-  enterApp();
-}
-
-function doAdminLogin(){
-  const key=document.getElementById("li-akey").value;
-  // Şifre burada güncellendi
-  if(key==="8389.Kemal**"){
-    isAdmin=true;currentUser="__admin__";
-    setCookie("wc26_admin","1");
-    enterApp();
-  } else showToast("Yanlış şifre");
-}
-
-function doLogout(){
-  delCookie("wc26_user");delCookie("wc26_admin");
-  currentUser=null;isAdmin=false;
-  document.getElementById("app-shell").style.display="none";
-  showRawPage("login");
-}
-
-async function persistUsers(){
-  recalcAll();
-  if(db)await fbWrite("wc26/users",users);
-}
-async function persistMatches(){
-  if(db)await fbWrite("wc26/matches",matches);
-}
-function recalcAll(){
-  Object.keys(users).forEach(u=>{
-    let t=0;
-    Object.entries(users[u].predictions||{}).forEach(([mid,p])=>{const m=matches.find(x=>x.id==mid);if(m?.result)t+=calcPts(p,m.result);});
-    users[u].points=t;
-  });
-}
-
-// ════════════════════════════════════════════════
-//  SIDEBAR SCOREBOARD
-// ════════════════════════════════════════════════
-function renderSidebar(){
-  const list=document.getElementById("sb-list");
-  const cnt=document.getElementById("sb-player-count");
-  if(!list)return;
-  const board=Object.entries(users)
-    .filter(([n])=>n!=="__admin__")
-    .map(([n,d])=>({n,pts:d.points||0}))
-    .sort((a,b)=>b.pts-a.pts);
-  if(cnt)cnt.textContent=`(${board.length} oyuncu)`;
-  list.innerHTML=board.map((e,i)=>`
-    <div class="sb-row${e.n===currentUser?" me":""}">
-      <span class="sb-rank">${i===0?"🥇":i===1?"🥈":i===2?"🥉":"#"+(i+1)}</span>
-      <span class="sb-name" title="${e.n}">${e.n}</span>
-      <span class="sb-pts">${e.pts}p</span>
-    </div>
-  `).join("");
-}
-
-// ════════════════════════════════════════════════
-//  MATCHES PAGE
-// ════════════════════════════════════════════════
-function renderMatches(){
-  const hu=document.getElementById("h-user");
-  const hs=document.getElementById("h-stats");
-  const rfBtn=document.getElementById("rf-btn");
-  if(!hu)return;
-  const myU=users[currentUser]||{predictions:{},points:0};
-  hu.textContent=currentUser;
-  hs.innerHTML=`<b style="color:#facc15">${myU.points||0}p</b> · ${Object.keys(myU.predictions||{}).length}/${matches.length} tahmin`;
-  if(rfBtn){rfBtn.disabled=autoLoading;rfBtn.innerHTML=autoLoading?`<span class="spinner"></span>Yükleniyor...`:"🔄 Şimdi Güncelle";}
-
-  const today=new Date().toLocaleDateString("sv-SE",{timeZone:"Europe/Istanbul"});
-  const vm=matches.filter(m=>{
-    if(currentTab==="today")return new Date(m.utc).toLocaleDateString("sv-SE",{timeZone:"Europe/Istanbul"})===today;
-    if(currentTab==="finished")return isFinished(m);
-    return !isFinished(m);
-  });
-
-  const list=document.getElementById("match-list");if(!list)return;
-  list.innerHTML="";
-  if(!vm.length){list.innerHTML=`<p style="color:#556;text-align:center;margin-top:40px">Bu kategoride maç yok.</p>`;return;}
-
-  vm.forEach(m=>{
-    const closed=isClosed(m),fin=isFinished(m);
-    const hasPred=!!(myU.predictions&&myU.predictions[m.id]);
-    const mp=myU.predictions?.[m.id];
-    const pts=fin&&hasPred?calcPts(mp,m.result):null;
-    const mins=!closed?minsLeft(m):0;
-
-    let badges=`<span class="badge bg">Gr.${m.group}</span> <span style="color:#6b8f6b;font-size:11px">${fmtTR(m.utc)} TR</span>`;
-    if(fin)badges+=` <span class="badge bd">✅ Bitti</span>`;
-    else if(closed)badges+=` <span class="badge bl">🔒 Kilitli</span>`;
-    else if(mins<=120)badges+=` <span class="badge bw">⏰ ${mins}dk</span>`;
-
-    let othersHtml="";
-    if(closed||fin){
-      const others=Object.entries(users).filter(([n])=>n!==currentUser&&n!=="__admin__"&&users[n]?.predictions?.[m.id]);
-      if(others.length){
-        const rows=others.map(([n,ud])=>{
-          const p=ud.predictions[m.id];
-          const op=fin?` <b style="color:#4ade80">(+${calcPts(p,m.result)}p)</b>`:"";
-          return `<span style="margin-right:8px;font-size:11px;color:#6b8f6b">${n}: <b style="color:#86efac">${p.homeScore}-${p.awayScore}</b>${op}</span>`;
-        }).join("");
-        othersHtml=`<div class="others"><div style="color:#334;font-size:10px;margin-bottom:4px">Diğer tahminler:</div><div style="display:flex;flex-wrap:wrap;gap:2px">${rows}</div></div>`;
-      }
-    }
-
-    const div=document.createElement("div");div.className="match-card";
-    div.innerHTML=`
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:4px"><div>${badges}</div></div>
-      <div style="display:flex;align-items:center;justify-content:space-between">
-        <div style="flex:1"><div style="font-size:24px">${FLAG[m.home]||"🏳️"}</div><div style="font-weight:700;font-size:14px;margin-top:2px">${m.home}</div></div>
-        <div style="text-align:center;flex:0 0 72px">${fin?`<div style="font-size:22px;font-weight:900;color:#facc15">${m.result.homeScore}–${m.result.awayScore}</div>`:`<div style="font-size:14px;color:#2a4a2a;font-weight:700">VS</div>`}</div>
-        <div style="flex:1;text-align:right"><div style="font-size:24px">${FLAG[m.away]||"🏳️"}</div><div style="font-weight:700;font-size:14px;margin-top:2px">${m.away}</div></div>
-      </div>
-      ${fin&&(m.result.scorers||[]).length?`<p style="color:#6b8f6b;font-size:11px;margin:5px 0 0">⚽ Goller: ${m.result.scorers.join(", ")}</p>`:""}
-      ${hasPred?`<div class="pred-row"><span style="color:#6b8f6b;font-size:12px">Tahminin: <b style="color:#86efac">${mp.homeScore}–${mp.awayScore}</b></span>${mp.scorers?.filter(Boolean).length?`<span style="color:#6b8f6b;font-size:11px">⚽ ${mp.scorers.filter(Boolean).join(", ")}</span>`:""} ${pts!==null?`<span style="background:${pts>0?"#14532d":"#1a1a1a"};color:${pts>0?"#86efac":"#6b8f6b"};border-radius:8px;padding:2px 10px;font-weight:700;font-size:13px">${pts>0?"+"+pts+"p":"0p"}</span>`:""}</div>`:""}
-      ${othersHtml}
-    `;
-    if(!fin&&!closed){
-      const btn=document.createElement("button");btn.className="btn";
-      btn.style.marginTop="10px";btn.style.marginBottom="0";
-      if(hasPred){btn.style.background="transparent";btn.style.color="#4ade80";btn.style.border="1px solid #4ade80";}
-      btn.textContent=hasPred?"✏️ Tahmini Düzenle":"🎯 Tahmin Yap";
-      btn.onclick=()=>openPredict(m);
-      div.appendChild(btn);
-    }
-    list.appendChild(div);
-  });
-}
-
-function switchTab(t){
-  currentTab=t;
-  ["upcoming","today","finished"].forEach(k=>{
-    const el=document.getElementById("tab-"+k);if(el)el.classList.toggle("active",k===t);
-  });
-  renderMatches();
-}
-
-// ════════════════════════════════════════════════
-//  PREDICT
-// ════════════════════════════════════════════════
-function openPredict(m){
-  if(isClosed(m)){showToast("⏰ Tahmin süresi doldu!");return;}
-  const ex=users[currentUser]?.predictions?.[m.id];
-  predData=ex?{homeScore:ex.homeScore,awayScore:ex.awayScore,scorers:[...(ex.scorers||[])]}:{homeScore:"",awayScore:"",scorers:[]};
-  scorerSlot=null;scorerSearch="";ogSlot=null;ogTeam=null;ogPlayerSearch="";
-  scorerListSearch="";showOGForm=false;ogFormTeam=null;ogFormSearch="";
-  predictMatch=m;
-  fetchLivePlayerStats(m.home,m.away);
-  showMain("predict");
-}
-
-function renderPredictPage(){
-  const card=document.getElementById("predict-card");
-  if(!card||!predictMatch)return;
-  const m=predictMatch;
-  card.innerHTML=`
-    <h2 style="text-align:center;font-size:16px;font-weight:800;margin-bottom:3px">${FLAG[m.home]||""} ${m.home} – ${m.away} ${FLAG[m.away]||""}</h2>
-    <p style="color:#6b8f6b;text-align:center;font-size:12px;margin-bottom:18px">${fmtTR(m.utc)} TR · Grup ${m.group} · ${m.venue}</p>
-    <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:20px">
-      <div style="text-align:center"><div style="color:#6b8f6b;font-size:11px;margin-bottom:5px">${m.home}</div><input class="big-num" type="number" id="p-home" min="0" max="20" value="${predData.homeScore}" oninput="predData.homeScore=this.value"></div>
-      <span style="font-size:26px;color:#2a4a2a;padding-top:18px">–</span>
-      <div style="text-align:center"><div style="color:#6b8f6b;font-size:11px;margin-bottom:5px">${m.away}</div><input class="big-num" type="number" id="p-away" min="0" max="20" value="${predData.awayScore}" oninput="predData.awayScore=this.value"></div>
-    </div>
-    <p style="font-weight:700;font-size:13px;margin-bottom:8px">⚽ Gol Atan Oyuncular <span style="color:#f59e0b;font-weight:400;font-size:11px">(her biri +7p)</span></p>
-    <div id="scorer-chips" style="display:flex;flex-wrap:wrap;gap:6px;min-height:10px;margin-bottom:8px"></div>
-    <div id="scorer-og-form" style="margin-bottom:6px"></div>
-    <button onclick="toggleOGForm()" style="background:transparent;color:#f59e0b;border:1px dashed #c77700;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:12px;margin-bottom:8px;display:block">+ Kendi Kalesine (OG)</button>
-    <input id="scorer-search-inp" class="inp" placeholder="Oyuncu adı ara ve tıkla ekle..." oninput="scorerListSearch=this.value;renderScorerSection()" style="margin-bottom:0">
-    <div id="scorer-list" style="background:#0d1a0d;border:1px solid #1e3a1e;border-radius:0 0 10px 10px;max-height:220px;overflow-y:auto;margin-bottom:14px"></div>
-    <div style="background:#0d1a2e;border-radius:12px;padding:12px;margin-bottom:14px">
-      <button id="ai-tip-btn" onclick="getAiTip()" class="btn" style="background:#1e2e4e;color:#818cf8;margin-bottom:0">🤖 AI'dan İpucu Al (Canlı Web Araması)</button>
-      <div id="ai-tip-text" style="margin-top:10px;color:#a5b4fc;font-size:12px;line-height:1.6"></div>
-    </div>
-    <button onclick="savePred()" class="btn">💾 Tahmini Kaydet</button>
-  `;
-  renderScorerSection();
-}
-
-function renderScorerSection(){
-  const chipsDiv=document.getElementById("scorer-chips");
-  const listDiv=document.getElementById("scorer-list");
-  const ogDiv=document.getElementById("scorer-og-form");
-  if(!chipsDiv||!predictMatch)return;
-
-  chipsDiv.innerHTML=predData.scorers.filter(Boolean).map((s,i)=>{
-    const display=s.replace(/^\[.*?\]\s*/,"").replace("⚽ Kendi Kalesine (OG) - ","OG: ").replace("⚽ ","");
-    return `<span style="background:#1e3a1e;color:#86efac;border:1px solid #2a5a2a;border-radius:20px;padding:4px 10px;font-size:12px;display:inline-flex;align-items:center;gap:6px"><span>⚽ ${display}</span><button onmousedown="event.preventDefault();removePredScorer(${i})" style="background:none;border:none;color:#f87171;cursor:pointer;font-size:15px;padding:0;line-height:1">×</button></span>`;
-  }).join("");
-
-  if(ogDiv){
-    if(showOGForm){
-      let h=`<div style="background:#1a2e1a;border:1px solid #2a5a2a;border-radius:8px;padding:10px">`;
-      h+=`<div style="font-size:11px;color:#6b8f6b;margin-bottom:6px">Kendi kalesine atan oyuncunun takımı:</div>`;
-      h+=`<div style="display:flex;gap:6px;margin-bottom:8px">`;
-      [predictMatch.home,predictMatch.away].forEach(t=>{
-        const sel=ogFormTeam===t;
-        h+=`<button onmousedown="event.preventDefault();ogFormTeam='${t.replace(/'/g,"\\'")}';ogFormSearch='';renderScorerSection()" style="flex:1;border-radius:8px;padding:7px;cursor:pointer;font-size:12px;font-weight:600;border:1px solid ${sel?"#4ade80":"#2a3a2a"};background:${sel?"#1e3a1e":"#162a16"};color:${sel?"#4ade80":"#6b8f6b"}">${FLAG[t]||""} ${t}</button>`;
-      });
-      h+=`</div>`;
-      if(ogFormTeam){
-        h+=`<input class="inp" value="${ogFormSearch}" oninput="ogFormSearch=this.value;renderScorerSection()" placeholder="${ogFormTeam} oyuncusu ara..." style="margin-bottom:4px;background:#162a16">`;
-        const pool=(SQUADS[ogFormTeam]||[]).filter(p=>!ogFormSearch||p.toLowerCase().includes(ogFormSearch.toLowerCase()));
-        h+=`<div style="background:#162a16;border:1px solid #2a5a2a;border-radius:8px;max-height:150px;overflow-y:auto">`;
-        pool.forEach(p=>{
-          const n=p.replace(/^\[.*?\]\s*/,"").trim();
-          h+=`<div class="ddi" onmousedown="event.preventDefault();addOGScorerPlayer('${n.replace(/'/g,"\\'")}','${ogFormTeam.replace(/'/g,"\\'")}')">⚽ ${n}</div>`;
-        });
-        h+=`</div>`;
-      }
-      h+=`</div>`;
-      ogDiv.innerHTML=h;
-    } else {
-      ogDiv.innerHTML="";
-    }
-  }
-
-  if(listDiv){
-    const players=[...(SQUADS[predictMatch.home]||[]),...(SQUADS[predictMatch.away]||[])];
-    const filtered=scorerListSearch?players.filter(p=>p.toLowerCase().includes(scorerListSearch.toLowerCase())):players;
-    const loadingBanner=liveStatsLoading?`<div style="padding:6px 12px;font-size:11px;color:#6b8f6b;display:flex;align-items:center;gap:6px;border-bottom:1px solid #1e3a1e"><span class="spinner"></span>Transfermarkt istatistikleri yükleniyor...</div>`:"";
-    listDiv.innerHTML=loadingBanner+filtered.map(p=>{
-      const name=p.replace(/^\[.*?\]\s*/,"").trim();
-      const pos=(p.match(/^\[.*?-\s*(\w+)\]/)||[])[1]||"";
-      const st=getStats(name);
-      const stHtml=st?`<span style="color:#6b8f6b;font-size:10px;margin-left:auto;padding-left:8px;white-space:nowrap">${st.c}M · ${st.g}⚽ · ${st.a}🎯</span>`:`<span style="color:#334;font-size:10px;margin-left:auto;padding-left:8px">—</span>`;
-      return `<div class="ddi" style="display:flex;align-items:center" onmousedown="event.preventDefault();addPredScorer('${p.replace(/'/g,"\\'")}')"><span style="color:#4ade80;font-size:10px;min-width:24px">${pos}</span><span>${name}</span>${stHtml}</div>`;
-    }).join("")||(filtered.length===0?`<div class="ddi" style="color:#556;pointer-events:none">Oyuncu bulunamadı</div>`:"");
-    listDiv.style.display="block";
-  }
-}
-
-function addPredScorer(p){predData.scorers.push(p);scorerListSearch="";const i=document.getElementById("scorer-search-inp");if(i)i.value="";renderScorerSection();}
-function removePredScorer(i){predData.scorers.splice(i,1);renderScorerSection();}
-function toggleOGForm(){showOGForm=!showOGForm;if(!showOGForm){ogFormTeam=null;ogFormSearch="";}renderScorerSection();}
-function addOGScorerPlayer(name,team){predData.scorers.push(`⚽ Kendi Kalesine (OG) - ${name} (${team})`);showOGForm=false;ogFormTeam=null;ogFormSearch="";renderScorerSection();}
-
-function renderScorerSlots(){
-  const sl=document.getElementById("scorer-slots");if(!sl||!predictMatch)return;
-  sl.innerHTML="";
-  const pool=["⚽ Kendi Kalesine (OG)", ...(SQUADS[predictMatch.home]||[]),...(SQUADS[predictMatch.away]||[])];
-  predData.scorers.forEach((s,i)=>{
-    const wrap=document.createElement("div");wrap.style.cssText="position:relative;margin-bottom:6px";
-    const row=document.createElement("div");row.style.cssText="display:flex;gap:6px";
-    const inp=document.createElement("input");inp.className="inp";inp.type="text";inp.placeholder="Oyuncu ara...";
-    inp.style.cssText="flex:1;margin-bottom:0;background:"+(scorerSlot===i?"#1e2e1e":"#162a16");
-    inp.value=scorerSlot===i?scorerSearch:s;
-    inp.onfocus=()=>{scorerSlot=i;scorerSearch=s||"";renderScorerSlots();};
-    inp.oninput=e=>{scorerSearch=e.target.value;predData.scorers[i]=e.target.value;if(ogSlot===i&&!e.target.value.startsWith("⚽ Kendi Kalesine")){ogSlot=null;ogTeam=null;}renderScorerSlots();};
-    row.appendChild(inp);
-    if(predData.scorers.length>1){
-      const del=document.createElement("button");
-      del.style.cssText="background:#2a1010;color:#f87171;border:none;border-radius:8px;width:34px;cursor:pointer;font-size:16px;flex-shrink:0";
-      del.textContent="×";del.onclick=()=>{predData.scorers.splice(i,1);if(scorerSlot>=predData.scorers.length)scorerSlot=null;if(ogSlot===i){ogSlot=null;ogTeam=null;}renderScorerSlots();};
-      row.appendChild(del);
-    }
-    wrap.appendChild(row);
-    if(scorerSlot===i){
-      const filtered=pool.filter(p=>!scorerSearch||p.toLowerCase().includes(scorerSearch.toLowerCase()));
-      if(filtered.length){
-        const dd=document.createElement("div");dd.className="dd";
-        filtered.forEach(p=>{
-          const di=document.createElement("div");di.className="ddi";di.textContent=p;
-          di.onmousedown=e=>{
-            e.preventDefault();
-            predData.scorers[i]=p;
-            if(p==="⚽ Kendi Kalesine (OG)"){ogSlot=i;ogTeam=null;ogPlayerSearch="";}
-            else if(ogSlot===i){ogSlot=null;ogTeam=null;}
-            scorerSlot=null;scorerSearch="";
-            renderScorerSlots();
-          };
-          dd.appendChild(di);
-        });
-        wrap.appendChild(dd);
-      }
-    }
-    if(s==="⚽ Kendi Kalesine (OG)"){
-      const ogForm=document.createElement("div");
-      ogForm.style.cssText="background:#1a2e1a;border:1px solid #2a5a2a;border-radius:8px;padding:10px;margin-top:4px";
-      const lbl=document.createElement("div");lbl.style.cssText="font-size:11px;color:#6b8f6b;margin-bottom:6px";
-      lbl.textContent="Kendi kalesine atan oyuncunun takımı:";
-      ogForm.appendChild(lbl);
-      const teamRow=document.createElement("div");teamRow.style.cssText="display:flex;gap:6px;margin-bottom:8px";
-      [predictMatch.home,predictMatch.away].forEach(team=>{
-        const btn=document.createElement("button");
-        const sel=ogSlot===i&&ogTeam===team;
-        btn.style.cssText=`flex:1;border-radius:8px;padding:7px;cursor:pointer;font-size:12px;font-weight:600;border:1px solid ${sel?"#4ade80":"#2a3a2a"};background:${sel?"#1e3a1e":"#162a16"};color:${sel?"#4ade80":"#6b8f6b"}`;
-        btn.textContent=`${FLAG[team]||""} ${team}`;
-        btn.onmousedown=e=>{e.preventDefault();ogSlot=i;ogTeam=team;ogPlayerSearch="";renderScorerSlots();};
-        teamRow.appendChild(btn);
-      });
-      ogForm.appendChild(teamRow);
-      if(ogSlot===i&&ogTeam){
-        const plInp=document.createElement("input");plInp.className="inp";plInp.type="text";
-        plInp.placeholder=`${ogTeam} oyuncusu ara...`;
-        plInp.style.cssText="margin-bottom:4px;background:#162a16";plInp.value=ogPlayerSearch;
-        plInp.oninput=e=>{ogPlayerSearch=e.target.value;renderScorerSlots();};
-        ogForm.appendChild(plInp);
-        const ogPool=(SQUADS[ogTeam]||[]).filter(p=>!ogPlayerSearch||p.toLowerCase().includes(ogPlayerSearch.toLowerCase())).slice(0,8);
-        if(ogPool.length){
-          const ogDd=document.createElement("div");ogDd.style.cssText="background:#162a16;border:1px solid #2a5a2a;border-radius:8px;max-height:150px;overflow-y:auto";
-          ogPool.forEach(p=>{
-            const playerName=p.replace(/^\[.*?\]\s*/,"").trim();
-            const di=document.createElement("div");di.className="ddi";di.textContent=`${playerName} (${ogTeam})`;
-            di.onmousedown=e=>{
-              e.preventDefault();
-              predData.scorers[i]=`⚽ Kendi Kalesine (OG) - ${playerName} (${ogTeam})`;
-              ogSlot=null;ogTeam=null;ogPlayerSearch="";
-              renderScorerSlots();
-            };
-            ogDd.appendChild(di);
-          });
-          ogForm.appendChild(ogDd);
-        }
-      }
-      wrap.appendChild(ogForm);
-    }
-    sl.appendChild(wrap);
-  });
-}
-
-function addScorer(){predData.scorers.push("");scorerSlot=predData.scorers.length-1;scorerSearch="";renderScorerSlots();}
-
-async function savePred(){
-  if(isClosed(predictMatch)){showToast("⏰ Süre doldu!");return;}
-  if(predData.homeScore===""||predData.awayScore===""){showToast("⚠️ Skoru tam gir!");return;}
-  
-  if(!users[currentUser])users[currentUser]={points:0};
-  if(!users[currentUser].predictions)users[currentUser].predictions={};
-
-  users[currentUser].predictions[predictMatch.id]={...predData,scorers:[...predData.scorers]};
-  await persistUsers();
-  showToast("✅ Tahmin kaydedildi!");
-  showMain("matches");
-}
-
-async function getAiTip(){
-  if(aiLoading)return;aiLoading=true;
-  const btn=document.getElementById("ai-tip-btn");
-  if(btn)btn.innerHTML=`<span class="spinner"></span>Düşünüyor...`;
-  try{
-    if(!anthropicApiKey){const el=document.getElementById("ai-tip-text");if(el)el.textContent="⚠️ API anahtarı girilmemiş. Admin panelinden ekleyin.";aiLoading=false;if(btn)btn.innerHTML="🤖 AI'dan İpucu Al";return;}
-    const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:apiHdrs(),
-      body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:500,tools:[{type:"web_search_20250305",name:"web_search"}],
-        messages:[{role:"user",content:`2026 FIFA WC: ${predictMatch.home} - ${predictMatch.away}. Skor tahmini ve goller. Türkçe, kısa.`}]})});
-    const d=await r.json();
-    const tip=d.content.map(b=>b.type==="text"?b.text:"").join("\n");
-    const el=document.getElementById("ai-tip-text");if(el)el.textContent=tip;
-  }catch{const el=document.getElementById("ai-tip-text");if(el)el.textContent="AI yanıt veremiyor.";}
-  aiLoading=false;
-  if(btn)btn.innerHTML="🤖 AI'dan İpucu Al (Canlı Web Araması)";
-}
-
-async function fetchLivePlayerStats(home,away){
-  if(!anthropicApiKey)return;
-  const cacheKey="wc26/statsCache/"+[home,away].sort().join("_").replace(/\s+/g,"");
-  if(db){
-    try{
-      const snap=await db.ref(cacheKey).once("value");
-      if(snap.exists()){Object.assign(liveStats,snap.val());renderScorerSection();return;}
-    }catch{}
-  }
-  liveStatsLoading=true;renderScorerSection();
-  try{
-    const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:apiHdrs(),
-      body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1500,tools:[{type:"web_search_20250305",name:"web_search"}],
-        messages:[{role:"user",content:`Transfermarkt'tan ${home} ve ${away} milli takım oyuncularının güncel uluslararası istatistikleri. Her oyuncu için caps, goals, assists verileri. Sadece JSON object döndür: {"OyuncuAdı":{"c":caps_sayısı,"g":gol_sayısı,"a":asist_sayısı}}. Tüm kadro oyuncularını dahil et.`}]})});
-    const d=await r.json();
-    const raw=(d.content||[]).map(b=>b.type==="text"?b.text:"").join("\n");
-    const clean=raw.replace(/```json\n?|```/g,"").trim();
-    const s=clean.indexOf("{"),e=clean.lastIndexOf("}");
-    if(s!==-1){
-      const fetched=JSON.parse(clean.slice(s,e+1));
-      Object.assign(liveStats,fetched);
-      if(db)db.ref(cacheKey).set(fetched).catch(()=>{});
-    }
-  }catch(err){console.warn("Stats fetch:",err.message);}
-  liveStatsLoading=false;renderScorerSection();
-}
-
-function saveApiKey(){
-  const k=(document.getElementById("admin-api-inp")?.value||"").trim();
-  if(!k){showToast("⚠️ Geçerli bir API anahtarı gir");return;}
-  anthropicApiKey=k;
-  localStorage.setItem("wc26_apikey",k);
-  showToast("✅ API anahtarı kaydedildi!");
-  renderAdmin();
-}
-
-function clearStatsCache(){
-  liveStats={};
-  if(db)db.ref("wc26/statsCache").remove().catch(()=>{});
-  showToast("🗑️ İstatistik cache temizlendi");
-}
-
-// ════════════════════════════════════════════════
-//  LEADERBOARD
-// ════════════════════════════════════════════════
-function renderLB(){
-  const list=document.getElementById("lb-list");if(!list)return;
-  const board=Object.entries(users).filter(([n])=>n!=="__admin__").map(([n,d])=>({n,pts:d.points||0,cnt:Object.keys(d.predictions||{}).length})).sort((a,b)=>b.pts-a.pts);
-  if(!board.length){list.innerHTML=`<p style="color:#556;text-align:center;margin-top:40px">Henüz katılımcı yok.</p>`;return;}
-  list.innerHTML=board.map((e,i)=>`
-    <div class="lb-row" style="background:${e.n===currentUser?"#1a2e1a":"#0f240f"};border-left:${e.n===currentUser?"3px solid #4ade80":"3px solid transparent"}">
-      <span style="font-size:18px;min-width:32px;text-align:center">${i===0?"🥇":i===1?"🥈":i===2?"🥉":"#"+(i+1)}</span>
-      <span style="flex:1;font-weight:600">${e.n}${e.n===currentUser?` <span style="color:#6b8f6b;font-size:11px">(sen)</span>`:""}</span>
-      <span style="color:#6b8f6b;font-size:11px;margin-right:8px">${e.cnt} tahmin</span>
-      <span style="color:#facc15;font-weight:700;font-size:16px">${e.pts}p</span>
-    </div>
-  `).join("");
-}
-
-// ════════════════════════════════════════════════
-//  ADMIN PANELİ & DÜZENLEME
-// ════════════════════════════════════════════════
-function renderAdmin(){
-  const list=document.getElementById("admin-list");
-  const rfBtn=document.getElementById("admin-rf-btn");
-  if(rfBtn){rfBtn.disabled=autoLoading;rfBtn.innerHTML=autoLoading?`<span class="spinner"></span>Yükleniyor...`:"🔄 Canlı Sonuçları Çek";}
-  if(!list)return;
-  const apiSection=document.getElementById("admin-api-section");
-  if(apiSection){
-    const hasKey=!!anthropicApiKey;
-    apiSection.innerHTML=`
-      <div class="card" style="margin-bottom:14px;border-color:#1e3a1e">
-        <div style="font-size:13px;font-weight:700;color:#4ade80;margin-bottom:8px">📡 Canlı Veri Kaynağı</div>
-        <div style="font-size:11px;color:#6b8f6b;margin-bottom:10px;line-height:1.7">
-          ✅ <b>ESPN API</b> — Maç sonuçları (API key gerektirmez, otomatik çalışır)<br>
-          ${hasKey?`✅`:`⬜`} <b>Anthropic API</b> — AI oyuncu ipuçları (opsiyonel)
-        </div>
-        <div style="font-size:12px;color:#a0b8a0;margin-bottom:6px">Anthropic API Anahtarı (opsiyonel):</div>
-        <div style="display:flex;gap:8px">
-          <input id="admin-api-inp" class="inp" type="password" placeholder="sk-ant-api03-... (opsiyonel)" value="${anthropicApiKey}" style="flex:1;margin-bottom:0;font-family:monospace;font-size:12px">
-          <button class="btn-sm" onclick="saveApiKey()" style="background:#4ade80;color:#0a1a0a;flex-shrink:0;padding:0 14px">Kaydet</button>
-        </div>
-        ${hasKey?`<button onclick="clearStatsCache()" style="margin-top:8px;background:transparent;color:#6b8f6b;border:1px solid #2a3a2a;border-radius:8px;padding:5px 12px;cursor:pointer;font-size:11px">🗑️ İstatistik Cache'ini Temizle</button>`:""}
-      </div>
-    `;
-  }
-  const closed=matches.filter(m=>isClosed(m));
-  if(!closed.length){list.innerHTML=`<p style="color:#556;text-align:center;margin-top:40px">Henüz kilitli maç yok.</p>`;return;}
-  list.innerHTML="";
-  closed.forEach(m=>{
-    const fin=isFinished(m);
-    const div=document.createElement("div");div.className="match-card";div.style.marginBottom="10px";
-    div.innerHTML=`
-      <div style="font-weight:700;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;font-size:13px">
-        <div>${FLAG[m.home]||""} ${m.home} – ${m.away} ${FLAG[m.away]||""}</div>
-        <span style="color:#6b8f6b;font-size:11px">${fmtTR(m.utc)}</span>
-      </div>
-      ${fin?`
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <span class="badge bd" style="font-size:14px;padding:4px 10px">${m.result.homeScore}–${m.result.awayScore}</span>
-          <button class="btn-sm" onclick="openAdminEdit(${m.id})" style="background:transparent;border:1px solid #f87171;color:#f87171">✏️ Düzelt</button>
-        </div>
-        <p style="color:#4ade80;margin:8px 0 0;font-size:12px">⚽ ${(m.result.scorers||[]).join(", ")||"Gol yok"}</p>
-      `:`
-        <button class="btn-sm" onclick="openAdminEdit(${m.id})" style="background:#f87171;color:#fff;width:100%">Sonuç Gir</button>
-      `}
-    `;
-    list.appendChild(div);
-  });
-}
-
-function openAdminEdit(mid){
-  const m=matches.find(x=>x.id===mid);
-  adminEditMatch=m;
-  if(isFinished(m)){
-    adminEditData={
-      homeScore:m.result.homeScore,
-      awayScore:m.result.awayScore,
-      scorers:m.result.scorers?.length ? [...m.result.scorers] : []
-    };
-  } else {
-    adminEditData={homeScore:"",awayScore:"",scorers:[]};
-  }
-  adminScorerListSearch="";adminShowOGForm=false;adminOgFormTeam=null;adminOgFormSearch="";
-  showMain("admin-edit");
-}
-
-function renderAdminEditPage(){
-  const card=document.getElementById("admin-edit-card");
-  if(!card||!adminEditMatch)return;
-  const m=adminEditMatch;
-  card.innerHTML=`
-    <h2 style="text-align:center;font-size:16px;font-weight:800;color:#f87171;margin-bottom:3px">🔧 Maç Sonucu Gir</h2>
-    <h2 style="text-align:center;font-size:16px;font-weight:800;margin-bottom:3px">${FLAG[m.home]||""} ${m.home} – ${m.away} ${FLAG[m.away]||""}</h2>
-    <p style="color:#6b8f6b;text-align:center;font-size:12px;margin-bottom:18px">${fmtTR(m.utc)} TR · Grup ${m.group} · ${m.venue}</p>
-    
-    <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:20px">
-      <div style="text-align:center"><div style="color:#6b8f6b;font-size:11px;margin-bottom:5px">${m.home}</div><input class="big-num" type="number" min="0" max="20" value="${adminEditData.homeScore}" oninput="adminEditData.homeScore=this.value" style="border-color:#f87171;color:#f87171"></div>
-      <span style="font-size:26px;color:#2a4a2a;padding-top:18px">–</span>
-      <div style="text-align:center"><div style="color:#6b8f6b;font-size:11px;margin-bottom:5px">${m.away}</div><input class="big-num" type="number" min="0" max="20" value="${adminEditData.awayScore}" oninput="adminEditData.awayScore=this.value" style="border-color:#f87171;color:#f87171"></div>
-    </div>
-    
-    <p style="font-weight:700;font-size:13px;margin-bottom:8px">⚽ Gol Atan Oyuncular <span style="color:#6b8f6b;font-weight:400;font-size:11px">(Eşleştirme için)</span></p>
-    <div id="admin-scorer-chips" style="display:flex;flex-wrap:wrap;gap:6px;min-height:10px;margin-bottom:8px"></div>
-    <div id="admin-scorer-og-form" style="margin-bottom:6px"></div>
-    <button onclick="toggleAdminOGForm()" style="background:transparent;color:#f87171;border:1px dashed #f87171;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:12px;margin-bottom:8px;display:block">+ Kendi Kalesine (OG)</button>
-    <input id="admin-scorer-search-inp" class="inp" placeholder="Oyuncu adı ara ve tıkla ekle..." oninput="adminScorerListSearch=this.value;renderAdminScorerSection()" style="margin-bottom:0">
-    <div id="admin-scorer-list" style="background:#1a0a0a;border:1px solid #4a1a1a;border-radius:0 0 10px 10px;max-height:220px;overflow-y:auto;margin-bottom:14px"></div>
-
-    <button onclick="saveAdminResultFinal()" class="btn" style="background:#f87171;color:#fff">💾 Sonucu Kaydet</button>
-  `;
-  renderAdminScorerSection();
-}
-
-function renderAdminScorerSection(){
-  const chipsDiv=document.getElementById("admin-scorer-chips");
-  const listDiv=document.getElementById("admin-scorer-list");
-  const ogDiv=document.getElementById("admin-scorer-og-form");
-  if(!chipsDiv||!adminEditMatch)return;
-
-  chipsDiv.innerHTML=adminEditData.scorers.map((s,i)=>
-    `<span style="background:#2a1010;color:#f87171;border:1px solid #4a1a1a;border-radius:20px;padding:4px 10px;font-size:12px;display:flex;align-items:center;gap:6px">${s.startsWith("⚽ Kendi Kalesine")?"🟥 ":""}<span>${s.replace(/^\[.*?\]\s*/,"")}</span><span onmousedown="event.preventDefault();removeAdminScorer(${i})" style="cursor:pointer;color:#f87171;font-size:15px;line-height:1;margin-left:2px">×</span></span>`
-  ).join("");
-
-  if(adminShowOGForm){
-    let h=`<div style="background:#1a0a0a;border:1px solid #f87171;border-radius:8px;padding:10px;margin-bottom:8px"><div style="font-size:11px;color:#f87171;margin-bottom:6px">Kendi kalesine atan oyuncunun takımı:</div><div style="display:flex;gap:6px;margin-bottom:8px">`;
-    [adminEditMatch.home,adminEditMatch.away].forEach(t=>{
-      const sel=adminOgFormTeam===t;
-      h+=`<button onmousedown="event.preventDefault();adminOgFormTeam='${t.replace(/'/g,"\\'")}';adminOgFormSearch='';renderAdminScorerSection()" style="flex:1;border-radius:8px;padding:7px;cursor:pointer;font-size:12px;font-weight:600;border:1px solid ${sel?"#f87171":"#3a1a1a"};background:${sel?"#3a1010":"#1a0a0a"};color:${sel?"#f87171":"#6b4b4b"}">${FLAG[t]||""} ${t}</button>`;
-    });
-    h+=`</div>`;
-    if(adminOgFormTeam){
-      h+=`<input class="inp" value="${adminOgFormSearch}" oninput="adminOgFormSearch=this.value;renderAdminScorerSection()" placeholder="${adminOgFormTeam} oyuncusu ara..." style="margin-bottom:4px;background:#1a0a0a">`;
-      const pool=(SQUADS[adminOgFormTeam]||[]).filter(p=>!adminOgFormSearch||p.toLowerCase().includes(adminOgFormSearch.toLowerCase()));
-      h+=`<div style="background:#1a0a0a;border:1px solid #f87171;border-radius:8px;max-height:150px;overflow-y:auto">`;
-      pool.forEach(p=>{
-        const n=p.replace(/^\[.*?\]\s*/,"").trim();
-        h+=`<div class="ddi" onmousedown="event.preventDefault();addAdminOGScorerPlayer('${n.replace(/'/g,"\\'")}','${adminOgFormTeam.replace(/'/g,"\\'")}')">⚽ ${n}</div>`;
-      });
-      h+=`</div>`;
-    }
-    h+=`</div>`;
-    ogDiv.innerHTML=h;
-  } else {
-    ogDiv.innerHTML="";
-  }
-
-  if(listDiv){
-    const players=[...(SQUADS[adminEditMatch.home]||[]),...(SQUADS[adminEditMatch.away]||[])];
-    const filtered=adminScorerListSearch?players.filter(p=>p.toLowerCase().includes(adminScorerListSearch.toLowerCase())):players;
-    listDiv.innerHTML=filtered.map(p=>{
-      const name=p.replace(/^\[.*?\]\s*/,"").trim();
-      const pos=(p.match(/^\[.*?-\s*(\w+)\]/)||[])[1]||"";
-      const st=getStats(name);
-      const stHtml=st?`<span style="color:#6b8f6b;font-size:10px;margin-left:auto;padding-left:8px;white-space:nowrap">${st.c}M · ${st.g}⚽ · ${st.a}🎯</span>`:`<span style="color:#334;font-size:10px;margin-left:auto;padding-left:8px">—</span>`;
-      return `<div class="ddi" style="display:flex;align-items:center" onmousedown="event.preventDefault();addAdminScorerFromList('${p.replace(/'/g,"\\'")}')"><span style="color:#f87171;font-size:10px;min-width:24px">${pos}</span><span>${name}</span>${stHtml}</div>`;
-    }).join("")||(filtered.length===0?`<div class="ddi" style="color:#556;pointer-events:none">Oyuncu bulunamadı</div>`:"");
-  }
-}
-
-function addAdminScorerFromList(p){adminEditData.scorers.push(p);adminScorerListSearch="";const i=document.getElementById("admin-scorer-search-inp");if(i)i.value="";renderAdminScorerSection();}
-function removeAdminScorer(i){adminEditData.scorers.splice(i,1);renderAdminScorerSection();}
-function toggleAdminOGForm(){adminShowOGForm=!adminShowOGForm;if(!adminShowOGForm){adminOgFormTeam=null;adminOgFormSearch="";}renderAdminScorerSection();}
-function addAdminOGScorerPlayer(name,team){adminEditData.scorers.push(`⚽ Kendi Kalesine (OG) - ${name} (${team})`);adminShowOGForm=false;adminOgFormTeam=null;adminOgFormSearch="";renderAdminScorerSection();}
-
-async function saveAdminResultFinal(){
-  if(adminEditData.homeScore===""||adminEditData.awayScore===""){showToast("⚠️ Skoru tam gir!");return;}
-  const idx=matches.findIndex(m=>m.id===adminEditMatch.id);if(idx===-1)return;
-  const cleanScorers=adminEditData.scorers.filter(s=>s.trim()!=="");
-  
-  matches[idx]={...matches[idx],result:{homeScore:parseInt(adminEditData.homeScore),awayScore:parseInt(adminEditData.awayScore),scorers:cleanScorers}};
-  await persistMatches();await persistUsers();
-  showToast("✅ Sonuç başarıyla kaydedildi!");
-  showMain("admin");
-}
-
-// ════════════════════════════════════════════════
-//  ESPN FREE API (key gerektirmez)
-// ════════════════════════════════════════════════
-const ESPN_MAP={"Mexico":"Meksika","South Africa":"Güney Afrika","South Korea":"Güney Kore",
-  "Czech Republic":"Çekya","Czechia":"Çekya","Canada":"Kanada",
-  "Bosnia and Herzegovina":"Bosna Hersek","Bosnia & Herzegovina":"Bosna Hersek",
-  "Qatar":"Katar","Switzerland":"İsviçre","Brazil":"Brezilya","Morocco":"Fas",
-  "Haiti":"Haiti","Scotland":"İskoçya","USA":"ABD","United States":"ABD",
-  "Paraguay":"Paraguay","Australia":"Avustralya","Turkey":"Türkiye","Germany":"Almanya",
-  "Curacao":"Curaçao","Curaçao":"Curaçao","Ivory Coast":"Fildişi Sahili",
-  "Côte d'Ivoire":"Fildişi Sahili","Ecuador":"Ekvador","Netherlands":"Hollanda",
-  "Japan":"Japonya","Sweden":"İsveç","Tunisia":"Tunus","Belgium":"Belçika",
-  "Egypt":"Mısır","Iran":"İran","New Zealand":"Yeni Zelanda","Spain":"İspanya",
-  "Cape Verde":"Yeşil Burun Adaları","Saudi Arabia":"Suudi Arabistan","Uruguay":"Uruguay",
-  "France":"Fransa","Senegal":"Senegal","Iraq":"Irak","Norway":"Norveç",
-  "Argentina":"Arjantin","Algeria":"Cezayir","Austria":"Avusturya","Jordan":"Ürdün",
-  "Portugal":"Portekiz","DR Congo":"Kongo Demokratik Cumhuriyeti",
-  "Democratic Republic of Congo":"Kongo Demokratik Cumhuriyeti",
-  "Uzbekistan":"Özbekistan","Colombia":"Kolombiya","England":"İngiltere",
-  "Croatia":"Hırvatistan","Ghana":"Gana","Panama":"Panama"};
-
-async function fetchScoresFromESPN(){
-  try{
-    const r=await fetch("https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard");
-    if(!r.ok)return[];
-    const data=await r.json();
-    return(data.events||[]).filter(ev=>ev.status?.type?.completed).map(ev=>{
-      const comp=ev.competitions?.[0];if(!comp)return null;
-      const hC=comp.competitors?.find(c=>c.homeAway==="home");
-      const aC=comp.competitors?.find(c=>c.homeAway==="away");
-      if(!hC||!aC)return null;
-      const home=ESPN_MAP[hC.team?.displayName];
-      const away=ESPN_MAP[aC.team?.displayName];
-      if(!home||!away)return null;
-      const scorers=(comp.details||[]).filter(d=>d.type?.text==="Goal"||d.type?.text==="Gol")
-        .map(d=>d.athletesInvolved?.[0]?.displayName).filter(Boolean);
-      return{home,away,homeScore:parseInt(hC.score)||0,awayScore:parseInt(aC.score)||0,scorers};
-    }).filter(Boolean);
-  }catch{return[];}
-}
-
-// ════════════════════════════════════════════════
-//  AUTO-FETCH
-// ════════════════════════════════════════════════
-async function autoFetch(silent=false){
-  const todo=matches.filter(m=>isClosed(m)&&!isFinished(m));
-  if(!todo.length){if(!silent)showToast("Sonuç bekleyen maç yok.");return;}
-  autoLoading=true;rerender();
-  if(!silent)showToast("🔄 ESPN'den sonuçlar alınıyor...",12000);
-  let updated=0;
-
-  // 1) ESPN (key gerektirmez)
-  try{
-    const espn=await fetchScoresFromESPN();
-    espn.forEach(res=>{
-      const idx=matches.findIndex(m=>m.home===res.home&&m.away===res.away&&isClosed(m)&&!isFinished(m));
-      if(idx!==-1){matches[idx]={...matches[idx],result:res};updated++;}
-    });
-    if(updated>0){
-      await persistMatches();await persistUsers();
-      if(!silent)showToast(`✅ ${updated} maç ESPN'den güncellendi!`);
-      else showToast(`🔄 Otomatik: ${updated} maç güncellendi`,4000);
-      autoLoading=false;rerender();return;
-    }
-  }catch{}
-
-  // 2) Anthropic fallback (key varsa)
-  if(anthropicApiKey){
-    try{
-      const list=todo.map(m=>`${m.home} - ${m.away}`).join("; ");
-      const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:apiHdrs(),
-        body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:800,tools:[{type:"web_search_20250305",name:"web_search"}],
-          messages:[{role:"user",content:`2026 FIFA WC bitmiş maç sonuçları: ${list}. JSON array: [{"home":"X","away":"Y","homeScore":1,"awayScore":0,"scorers":["Oyuncu"]}]. Bitmemişleri dahil etme. Bitmiş yoksa [].`}]})});
-      const d=await r.json();
-      const raw=d.content.map(b=>b.type==="text"?b.text:"").join("\n");
-      const clean=raw.replace(/```json\n?|```/g,"").trim();
-      const s=clean.indexOf("["),e=clean.lastIndexOf("]");
-      if(s!==-1){
-        JSON.parse(clean.slice(s,e+1)).forEach(res=>{
-          const idx=matches.findIndex(m=>m.home===res.home&&m.away===res.away&&!isFinished(m));
-          if(idx!==-1){matches[idx]={...matches[idx],result:{homeScore:res.homeScore,awayScore:res.awayScore,scorers:res.scorers||[]}};updated++;}
-        });
-        if(updated>0){await persistMatches();await persistUsers();}
-      }
-    }catch(err){if(!silent)showToast("Hata: "+err.message);}
-  }
-
-  if(!updated){if(!silent)showToast("Biten maç bulunamadı. Admin manuel girebilir.");}
-  else if(!silent)showToast(`✅ ${updated} maç güncellendi!`);
-  autoLoading=false;rerender();
-}
-
-function manualFetch(){autoFetch(false);}
-
-// Menüleri dışa tıklandığında kapat
-document.addEventListener("click",e=>{
-  if(scorerSlot!==null&&!e.target.closest("#scorer-slots")){scorerSlot=null;renderScorerSlots();}
-});
-
-setInterval(rerender,60000);
-
-// ════════════════════════════════════════════════
-//  OTOMATİK BAŞLATICI
-// ════════════════════════════════════════════════
-(function boot(){
-  try {
-    if (typeof firebase === 'undefined') {
-      showToast("⚠️ Firebase yüklenemedi. İnternet bağlantını kontrol et.", 5000);
-      return;
-    }
-    
-    if(firebase.apps.length === 0){
-      firebase.initializeApp(FIREBASE_CONFIG);
-    }
-    db = firebase.database();
-    
-    startApp();
-  } catch(e) {
-    showToast("Bağlantı Hatası: " + e.message, 6000);
-    console.error("Boot Hatası:", e);
-  }
-})();
-</script>
-</body>
-</html>
