@@ -81,6 +81,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a1a0a;color:#e8f5e
 <body>
 <div class="toast" id="toast"></div>
 
+<!-- ═══ LOGIN PAGE ═══ -->
 <div id="pg-login" class="page active">
 <div class="center">
 <div class="card" style="max-width:400px;width:100%">
@@ -109,6 +110,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a1a0a;color:#e8f5e
 </div>
 </div>
 
+<!-- ═══ MAIN NAV ═══ -->
 <nav class="nav" id="main-nav" style="display:none">
   <span class="logo">⚽ WC 2026</span>
   <div style="display:flex;align-items:center;gap:6px">
@@ -123,9 +125,12 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a1a0a;color:#e8f5e
   <div><button class="nav-btn" onclick="doLogout()">Çıkış</button></div>
 </nav>
 
+<!-- ═══ APP SHELL ═══ -->
 <div class="app-layout" id="app-shell" style="display:none">
 
+  <!-- MAIN CONTENT -->
   <div style="flex:1;min-width:0">
+    <!-- MATCHES -->
     <div id="pg-matches" class="page active" style="padding:16px 12px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;flex-wrap:wrap;gap:8px">
         <div>
@@ -142,21 +147,25 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a1a0a;color:#e8f5e
       <div id="match-list"></div>
     </div>
 
+    <!-- PREDICT -->
     <div id="pg-predict" class="page" style="padding:16px 12px">
       <button onclick="showMain('matches')" style="background:transparent;color:#6b8f6b;border:none;cursor:pointer;font-size:13px;margin-bottom:12px;padding:0">← Geri</button>
       <div class="card" id="predict-card"></div>
     </div>
 
+    <!-- ADMIN EDIT -->
     <div id="pg-admin-edit" class="page" style="padding:16px 12px">
       <button onclick="showMain('admin')" style="background:transparent;color:#f87171;border:none;cursor:pointer;font-size:13px;margin-bottom:12px;padding:0">← İptal</button>
       <div class="card" id="admin-edit-card"></div>
     </div>
 
+    <!-- LEADERBOARD -->
     <div id="pg-lb" class="page" style="padding:16px 12px">
       <h2 style="margin:0 0 14px;font-size:20px;font-weight:800">🏆 Sıralama Tablosu</h2>
       <div id="lb-list"></div>
     </div>
 
+    <!-- ADMIN PANEL -->
     <div id="pg-admin" class="page" style="padding:16px 12px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
         <h2 style="margin:0;color:#f87171;font-size:17px">🔧 Admin – Sonuç Listesi</h2>
@@ -166,6 +175,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a1a0a;color:#e8f5e
     </div>
   </div>
 
+  <!-- SIDEBAR SCOREBOARD -->
   <aside class="sidebar" id="sidebar">
     <div class="sb-title">🏆 Sıralama <span id="sb-player-count" style="color:#6b8f6b;font-size:11px;font-weight:400"></span></div>
     <div id="sb-list"></div>
@@ -179,7 +189,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a1a0a;color:#e8f5e
 
 <script>
 // ════════════════════════════════════════════════
-//  FIREBASE AYARLARI (SABİTLENDİ)
+//  FIREBASE AYARLARI
 // ════════════════════════════════════════════════
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyDZSlGkMUe7OEuqShJEzphmexL64YGbhTg",
@@ -267,7 +277,10 @@ const fmtTR=u=>new Date(u).toLocaleString("tr-TR",{day:"2-digit",month:"2-digit"
 const minsLeft=m=>Math.max(0,Math.round((deadline(m)-new Date())/60000));
 
 const normalizeStr = s => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-function cleanName(s){ return normalizeStr((s||"").replace(/^\[.*?\]\s*/, '').trim()); }
+function cleanName(s){ 
+  // Takım bilgisini ve emoji/boşlukları temizle
+  return normalizeStr((s||"").replace(/^\[.*?\]\s*/, '').replace('⚽ ', '').trim()); 
+}
 
 function calcPts(p,r){
   if(!r||!p)return 0;let pts=0;
@@ -420,7 +433,8 @@ function doLogin(){
 
 function doAdminLogin(){
   const key=document.getElementById("li-akey").value;
-  if(key==="wc2026admin"){
+  // Şifre burada güncellendi
+  if(key==="8389.Kemal**"){
     isAdmin=true;currentUser="__admin__";
     setCookie("wc26_admin","1");
     enterApp();
@@ -589,7 +603,7 @@ function renderPredictPage(){
 function renderScorerSlots(){
   const sl=document.getElementById("scorer-slots");if(!sl||!predictMatch)return;
   sl.innerHTML="";
-  const pool=[...(SQUADS[predictMatch.home]||[]),...(SQUADS[predictMatch.away]||[])];
+  const pool=["⚽ Kendi Kalesine (OG)", ...(SQUADS[predictMatch.home]||[]),...(SQUADS[predictMatch.away]||[])];
   predData.scorers.forEach((s,i)=>{
     const wrap=document.createElement("div");wrap.style.cssText="position:relative;margin-bottom:6px";
     const row=document.createElement("div");row.style.cssText="display:flex;gap:6px";
@@ -671,7 +685,7 @@ function renderLB(){
 }
 
 // ════════════════════════════════════════════════
-//  ADMIN PANELİ & DÜZENLEME (YENİ SİSTEM)
+//  ADMIN PANELİ & DÜZENLEME
 // ════════════════════════════════════════════════
 function renderAdmin(){
   const list=document.getElementById("admin-list");
@@ -747,7 +761,7 @@ function renderAdminEditPage(){
 function renderAdminScorerSlots(){
   const sl=document.getElementById("admin-scorer-slots");if(!sl||!adminEditMatch)return;
   sl.innerHTML="";
-  const pool=[...(SQUADS[adminEditMatch.home]||[]),...(SQUADS[adminEditMatch.away]||[])];
+  const pool=["⚽ Kendi Kalesine (OG)", ...(SQUADS[adminEditMatch.home]||[]),...(SQUADS[adminEditMatch.away]||[])];
   adminEditData.scorers.forEach((s,i)=>{
     const wrap=document.createElement("div");wrap.style.cssText="position:relative;margin-bottom:6px";
     const row=document.createElement("div");row.style.cssText="display:flex;gap:6px";
@@ -808,7 +822,8 @@ async function autoFetch(silent=false){
         messages:[{role:"user",content:`2026 FIFA WC bitmiş maç sonuçları: ${list}. Sadece bitmiş olanlar için JSON array: [{"home":"X","away":"Y","homeScore":1,"awayScore":0,"scorers":["Oyuncu"]}]. Bitmemişleri dahil etme. Hiç bitmemişse sadece [].`}]})});
     const d=await r.json();
     const raw=d.content.map(b=>b.type==="text"?b.text:"").join("\n");
-    const clean=raw.replace(/```json|```/g,"").trim();
+    const clean=raw.replace(/```json|
+```/g,"").trim();
     const s=clean.indexOf("["),e=clean.lastIndexOf("]");
     if(s===-1){if(!silent)showToast("Biten maç bulunamadı.");autoLoading=false;rerender();return;}
     const results=JSON.parse(clean.slice(s,e+1));
@@ -835,7 +850,7 @@ document.addEventListener("click",e=>{
 setInterval(rerender,60000);
 
 // ════════════════════════════════════════════════
-//  OTOMATİK BAŞLATICI 
+//  OTOMATİK BAŞLATICI
 // ════════════════════════════════════════════════
 (function boot(){
   try {
