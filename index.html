@@ -353,6 +353,12 @@ function startApp(){
   autoFetchTimer=setInterval(()=>autoFetch(true),3600000);
   document.getElementById("auto-badge").style.display="inline-flex";
 
+  const adminSaved=getCookie("wc26_admin");
+  if(adminSaved==="1"){
+    isAdmin=true;currentUser="__admin__";
+    enterApp();
+    return;
+  }
   const saved=getCookie("wc26_user");
   if(saved&&saved!=="admin"){
     currentUser=saved;
@@ -822,8 +828,7 @@ async function autoFetch(silent=false){
         messages:[{role:"user",content:`2026 FIFA WC bitmiş maç sonuçları: ${list}. Sadece bitmiş olanlar için JSON array: [{"home":"X","away":"Y","homeScore":1,"awayScore":0,"scorers":["Oyuncu"]}]. Bitmemişleri dahil etme. Hiç bitmemişse sadece [].`}]})});
     const d=await r.json();
     const raw=d.content.map(b=>b.type==="text"?b.text:"").join("\n");
-    const clean=raw.replace(/```json|
-```/g,"").trim();
+    const clean=raw.replace(/```json\n?|```/g,"").trim();
     const s=clean.indexOf("["),e=clean.lastIndexOf("]");
     if(s===-1){if(!silent)showToast("Biten maç bulunamadı.");autoLoading=false;rerender();return;}
     const results=JSON.parse(clean.slice(s,e+1));
@@ -861,8 +866,8 @@ setInterval(rerender,60000);
     
     if(firebase.apps.length === 0){
       firebase.initializeApp(FIREBASE_CONFIG);
-      db = firebase.database();
     }
+    db = firebase.database();
     
     startApp();
   } catch(e) {
