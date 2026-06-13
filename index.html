@@ -169,8 +169,9 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a1a0a;color:#e8f5e
     <div id="pg-admin" class="page" style="padding:16px 12px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
         <h2 style="margin:0;color:#f87171;font-size:17px">🔧 Admin – Sonuç Listesi</h2>
-        <button class="btn-outline" id="admin-rf-btn" onclick="manualFetch()" style="border-color:#f87171;color:#f87171">🤖 AI ile Otomatik Çek</button>
+        <button class="btn-outline" id="admin-rf-btn" onclick="manualFetch()" style="border-color:#f87171;color:#f87171">🔄 Canlı Sonuçları Çek</button>
       </div>
+      <div id="admin-api-section"></div>
       <div id="admin-list"></div>
     </div>
   </div>
@@ -265,6 +266,81 @@ for(const team in RAW_SQUADS){
 
 const FLAG={"Meksika":"🇲🇽","Güney Afrika":"🇿🇦","Güney Kore":"🇰🇷","Çekya":"🇨🇿","Kanada":"🇨🇦","Bosna Hersek":"🇧🇦","Katar":"🇶🇦","İsviçre":"🇨🇭","Brezilya":"🇧🇷","Fas":"🇲🇦","Haiti":"🇭🇹","İskoçya":"🏴󠁧󠁢󠁳󠁣󠁴󠁿","ABD":"🇺🇸","Paraguay":"🇵🇾","Avustralya":"🇦🇺","Türkiye":"🇹🇷","Almanya":"🇩🇪","Curaçao":"🇨🇼","Fildişi Sahili":"🇨🇮","Ekvador":"🇪🇨","Hollanda":"🇳🇱","Japonya":"🇯🇵","İsveç":"🇸🇪","Tunus":"🇹🇳","Belçika":"🇧🇪","Mısır":"🇪🇬","İran":"🇮🇷","Yeni Zelanda":"🇳🇿","İspanya":"🇪🇸","Yeşil Burun Adaları":"🇨🇻","Suudi Arabistan":"🇸🇦","Uruguay":"🇺🇾","Fransa":"🇫🇷","Senegal":"🇸🇳","Irak":"🇮🇶","Norveç":"🇳🇴","Arjantin":"🇦🇷","Cezayir":"🇩🇿","Avusturya":"🇦🇹","Ürdün":"🇯🇴","Portekiz":"🇵🇹","Kongo Demokratik Cumhuriyeti":"🇨🇩","Özbekistan":"🇺🇿","Kolombiya":"🇨🇴","İngiltere":"🏴󠁧󠁢󠁥󠁮󠁧󠁿","Hırvatistan":"🇭🇷","Gana":"🇬🇭","Panama":"🇵🇦"};
 
+// Transfermarkt milli takım istatistikleri (caps/gol/asist)
+const PLAYER_STATS={
+  "Lionel Messi":{c:191,g:109,a:56},"Lautaro Martínez":{c:71,g:30,a:14},"Julián Álvarez":{c:50,g:18,a:11},
+  "Enzo Fernández":{c:42,g:8,a:9},"Rodrigo De Paul":{c:79,g:14,a:22},"Alexis Mac Allister":{c:46,g:11,a:8},
+  "Emiliano Martínez":{c:44,g:0,a:0},"Nicolás Otamendi":{c:112,g:10,a:5},"Cristian Romero":{c:36,g:1,a:2},
+  "Cristiano Ronaldo":{c:217,g:135,a:43},"Bruno Fernandes":{c:86,g:31,a:24},"Bernardo Silva":{c:91,g:15,a:22},
+  "Gonçalo Ramos":{c:28,g:18,a:5},"Rafael Leão":{c:44,g:8,a:7},"João Félix":{c:56,g:11,a:9},
+  "Pedro Neto":{c:41,g:6,a:11},"Rúben Dias":{c:75,g:3,a:1},"Vitinha":{c:38,g:3,a:7},
+  "Kylian Mbappé":{c:81,g:51,a:34},"Ousmane Dembélé":{c:65,g:14,a:16},"Marcus Thuram":{c:50,g:16,a:8},
+  "Bradley Barcola":{c:20,g:5,a:3},"Désiré Doué":{c:8,g:2,a:1},"Jean-Philippe Mateta":{c:18,g:7,a:2},
+  "N'Golo Kanté":{c:57,g:2,a:8},"Aurélien Tchouaméni":{c:35,g:4,a:2},"Adrien Rabiot":{c:49,g:13,a:9},
+  "Lamine Yamal":{c:26,g:9,a:10},"Nico Williams":{c:33,g:12,a:9},"Dani Olmo":{c:41,g:14,a:11},
+  "Rodri":{c:63,g:8,a:14},"Pedri":{c:42,g:8,a:9},"Mikel Oyarzabal":{c:37,g:14,a:7},
+  "Ferran Torres":{c:53,g:22,a:8},"Gavi":{c:40,g:3,a:7},"Unai Simón":{c:44,g:0,a:0},
+  "Harry Kane":{c:97,g:69,a:20},"Bukayo Saka":{c:57,g:17,a:18},"Jude Bellingham":{c:58,g:23,a:10},
+  "Marcus Rashford":{c:60,g:17,a:10},"Ollie Watkins":{c:24,g:11,a:5},"Declan Rice":{c:60,g:5,a:5},
+  "Kai Havertz":{c:73,g:32,a:13},"Jamal Musiala":{c:49,g:12,a:12},"Florian Wirtz":{c:36,g:14,a:12},
+  "Leroy Sané":{c:74,g:20,a:26},"Joshua Kimmich":{c:92,g:9,a:25},"Manuel Neuer":{c:124,g:0,a:0},
+  "Virgil van Dijk":{c:74,g:12,a:4},"Cody Gakpo":{c:59,g:23,a:12},"Memphis Depay":{c:95,g:44,a:21},
+  "Frenkie de Jong":{c:67,g:8,a:11},"Denzel Dumfries":{c:56,g:11,a:14},"Ryan Gravenberch":{c:29,g:4,a:4},
+  "Romelu Lukaku":{c:118,g:74,a:30},"Kevin De Bruyne":{c:101,g:26,a:53},"Thibaut Courtois":{c:102,g:0,a:0},
+  "Charles De Ketelaere":{c:46,g:7,a:9},"Jérémy Doku":{c:28,g:5,a:8},"Leandro Trossard":{c:32,g:5,a:7},
+  "Erling Haaland":{c:38,g:31,a:9},"Martin Ødegaard":{c:79,g:15,a:22},"Alexander Sørloth":{c:43,g:17,a:7},
+  "Jørgen Strand Larsen":{c:31,g:12,a:5},"Sander Berge":{c:50,g:4,a:6},
+  "Viktor Gyökeres":{c:34,g:17,a:7},"Alexander Isak":{c:51,g:16,a:5},"Anthony Elanga":{c:20,g:5,a:3},
+  "Arda Güler":{c:30,g:10,a:7},"Kenan Yıldız":{c:22,g:6,a:4},"Kerem Aktürkoğlu":{c:35,g:11,a:8},
+  "Hakan Calhanoglou":{c:90,g:21,a:25},"Orkun Kökçü":{c:30,g:5,a:9},
+  "Federico Valverde":{c:66,g:14,a:15},"Darwin Núñez":{c:55,g:23,a:10},
+  "Giorgian De Arrascaeta":{c:56,g:20,a:14},"Rodrigo Bentancur":{c:67,g:5,a:8},
+  "Federico Viñas":{c:24,g:9,a:3},"Manuel Ugarte":{c:38,g:2,a:4},
+  "Luis Díaz":{c:49,g:13,a:10},"James Rodríguez":{c:96,g:34,a:31},
+  "Cucho Hernández":{c:33,g:8,a:4},"Jhon Córdoba":{c:44,g:14,a:5},
+  "Moisés Caicedo":{c:46,g:5,a:9},"Richard Ríos":{c:25,g:3,a:5},
+  "Luka Modric":{c:185,g:27,a:52},"Ivan Perisic":{c:120,g:33,a:39},
+  "Andrej Kramaric":{c:65,g:26,a:20},"Mateo Kovacic":{c:102,g:6,a:17},
+  "Dominik Livakovic":{c:58,g:0,a:0},"Josko Gvardiol":{c:44,g:4,a:5},
+  "Thomas Partey":{c:73,g:13,a:11},"Iñaki Williams":{c:27,g:3,a:4},
+  "Sadio Mané":{c:99,g:39,a:29},"Ismaïla Sarr":{c:55,g:14,a:9},
+  "Iliman Ndiaye":{c:30,g:9,a:5},"Nicolas Jackson":{c:28,g:11,a:3},
+  "Son Heung-Min":{c:130,g:33,a:22},"Lee Kang-In":{c:50,g:11,a:14},
+  "Cho Kyu-Sung":{c:42,g:16,a:4},"Kim Min-Jae":{c:72,g:5,a:2},
+  "Takefusa Kubo":{c:37,g:10,a:8},"Daichi Kamada":{c:67,g:18,a:12},
+  "Daizen Maeda":{c:42,g:13,a:5},"Ayase Ueda":{c:33,g:15,a:4},"Ritsu Doan":{c:52,g:14,a:10},
+  "Christian Pulisic":{c:65,g:28,a:16},"Weston McKennie":{c:63,g:12,a:11},
+  "Tyler Adams":{c:54,g:1,a:7},"Brenden Aaronson":{c:45,g:7,a:9},
+  "Jonathan David":{c:51,g:24,a:9},"Alphonso Davies":{c:77,g:12,a:17},
+  "Tajon Buchanan":{c:47,g:10,a:11},"Stephen Eustáquio":{c:53,g:4,a:9},
+  "Raúl Jiménez":{c:122,g:52,a:26},"Santiago Gimenez":{c:43,g:22,a:8},
+  "Edson Álvarez":{c:72,g:5,a:5},"Orbelín Pineda":{c:60,g:10,a:14},
+  "Enner Valencia":{c:83,g:37,a:12},"Moisés Caicedo":{c:46,g:5,a:9},
+  "Kendry Páez":{c:18,g:3,a:2},"Anthony Valencia":{c:38,g:18,a:9},
+  "Miguel Almirón":{c:55,g:10,a:12},"Antonio Sanabria":{c:48,g:11,a:5},
+  "Mohamed Salah":{c:94,g:58,a:31},"Omar Marmoush":{c:30,g:12,a:7},
+  "Mehdi Taremi":{c:93,g:45,a:22},"Alireza Jahanbakhsh":{c:102,g:36,a:25},
+  "Riyad Mahrez":{c:101,g:33,a:36},"Mohamed Amine Amoura":{c:28,g:9,a:5},
+  "Amine Gouiri":{c:25,g:8,a:5},"Houssem Aouar":{c:31,g:5,a:7},
+  "Achraf Hakimi":{c:74,g:13,a:29},"Sofyan Amrabat":{c:73,g:3,a:7},
+  "Brahim Díaz":{c:27,g:5,a:7},"Ayoub El Kaabi":{c:35,g:17,a:6},
+  "Marko Arnautovic":{c:109,g:35,a:22},"David Alaba":{c:106,g:17,a:34},
+  "Marcel Sabitzer":{c:73,g:15,a:17},"Christoph Baumgartner":{c:40,g:8,a:9},
+  "Salem Al Dawsari":{c:89,g:26,a:30},"Firas Al Buraikan":{c:52,g:22,a:11},
+  "Almoez Ali":{c:90,g:44,a:17},"Akram Afif":{c:85,g:31,a:28},
+  "Granit Xhaka":{c:124,g:15,a:24},"Breel Embolo":{c:66,g:19,a:9},
+  "Xherdan Shaqiri":{c:125,g:32,a:27},"Noah Okafor":{c:30,g:7,a:5},
+  "Chris Wood":{c:73,g:32,a:9},"Mathew Leckie":{c:89,g:14,a:11},
+  "Patrick Schick":{c:63,g:25,a:10},"Adam Hložek":{c:33,g:7,a:5},
+  "Sead Kolasinac":{c:64,g:3,a:7},"Edin Dzeko":{c:137,g:65,a:40},
+  "Ermedin Demirovic":{c:38,g:13,a:5},
+};
+function getStats(name){
+  const n=normalizeStr(name);
+  return liveStats[name]||liveStats[Object.keys(liveStats).find(k=>normalizeStr(k)===n)]||
+    PLAYER_STATS[name]||PLAYER_STATS[Object.keys(PLAYER_STATS).find(k=>normalizeStr(k)===n)];
+}
+
 let ALL_MATCHES=[{id:1,home:"Meksika",away:"Güney Afrika",utc:"2026-06-11T20:00:00Z",group:"A",venue:"Mexico City"},{id:2,home:"Güney Kore",away:"Çekya",utc:"2026-06-12T03:00:00Z",group:"A",venue:"Guadalajara"},{id:3,home:"Kanada",away:"Bosna Hersek",utc:"2026-06-12T20:00:00Z",group:"B",venue:"Toronto"},{id:4,home:"ABD",away:"Paraguay",utc:"2026-06-13T02:00:00Z",group:"D",venue:"Los Angeles"},{id:5,home:"Katar",away:"İsviçre",utc:"2026-06-13T20:00:00Z",group:"B",venue:"Santa Clara"},{id:6,home:"Brezilya",away:"Fas",utc:"2026-06-13T23:00:00Z",group:"C",venue:"New York/NJ"},{id:7,home:"Haiti",away:"İskoçya",utc:"2026-06-14T02:00:00Z",group:"C",venue:"Boston"},{id:8,home:"Avustralya",away:"Türkiye",utc:"2026-06-14T05:00:00Z",group:"D",venue:"Vancouver"},{id:9,home:"Almanya",away:"Curaçao",utc:"2026-06-14T18:00:00Z",group:"E",venue:"Houston"},{id:10,home:"Hollanda",away:"Japonya",utc:"2026-06-14T21:00:00Z",group:"F",venue:"Dallas"},{id:11,home:"Fildişi Sahili",away:"Ekvador",utc:"2026-06-15T00:00:00Z",group:"E",venue:"Philadelphia"},{id:12,home:"Tunus",away:"İsveç",utc:"2026-06-15T03:00:00Z",group:"F",venue:"Monterrey"},{id:13,home:"İspanya",away:"Yeşil Burun Adaları",utc:"2026-06-15T17:00:00Z",group:"H",venue:"Atlanta"},{id:14,home:"Belçika",away:"Mısır",utc:"2026-06-15T20:00:00Z",group:"G",venue:"Seattle"},{id:15,home:"Suudi Arabistan",away:"Uruguay",utc:"2026-06-15T23:00:00Z",group:"H",venue:"Miami"},{id:16,home:"İran",away:"Yeni Zelanda",utc:"2026-06-16T02:00:00Z",group:"G",venue:"Los Angeles"},{id:17,home:"Fransa",away:"Senegal",utc:"2026-06-16T20:00:00Z",group:"I",venue:"New York/NJ"},{id:18,home:"Norveç",away:"Irak",utc:"2026-06-16T23:00:00Z",group:"I",venue:"Boston"},{id:19,home:"Arjantin",away:"Cezayir",utc:"2026-06-17T02:00:00Z",group:"J",venue:"Kansas City"},{id:20,home:"Avusturya",away:"Ürdün",utc:"2026-06-17T05:00:00Z",group:"J",venue:"Santa Clara"},{id:21,home:"Portekiz",away:"Kongo Demokratik Cumhuriyeti",utc:"2026-06-17T18:00:00Z",group:"K",venue:"Houston"},{id:22,home:"İngiltere",away:"Hırvatistan",utc:"2026-06-17T21:00:00Z",group:"L",venue:"Dallas"},{id:23,home:"Gana",away:"Panama",utc:"2026-06-18T00:00:00Z",group:"L",venue:"Toronto"},{id:24,home:"Özbekistan",away:"Kolombiya",utc:"2026-06-18T03:00:00Z",group:"K",venue:"Mexico City"},{id:25,home:"Güney Afrika",away:"Çekya",utc:"2026-06-18T17:00:00Z",group:"A",venue:"Atlanta"},{id:26,home:"İsviçre",away:"Bosna Hersek",utc:"2026-06-18T20:00:00Z",group:"B",venue:"Los Angeles"},{id:27,home:"Kanada",away:"Katar",utc:"2026-06-18T23:00:00Z",group:"B",venue:"Vancouver"},{id:28,home:"Meksika",away:"Güney Kore",utc:"2026-06-19T02:00:00Z",group:"A",venue:"Guadalajara"},{id:29,home:"ABD",away:"Avustralya",utc:"2026-06-19T20:00:00Z",group:"D",venue:"Seattle"},{id:30,home:"İskoçya",away:"Fas",utc:"2026-06-19T20:00:00Z",group:"C",venue:"Boston"},{id:31,home:"Brezilya",away:"Haiti",utc:"2026-06-20T02:00:00Z",group:"C",venue:"Philadelphia"},{id:32,home:"Paraguay",away:"Türkiye",utc:"2026-06-20T05:00:00Z",group:"D",venue:"Santa Clara"},{id:33,home:"Hollanda",away:"İsveç",utc:"2026-06-20T18:00:00Z",group:"F",venue:"Houston"},{id:34,home:"Almanya",away:"Fildişi Sahili",utc:"2026-06-20T21:00:00Z",group:"E",venue:"Toronto"},{id:35,home:"Ekvador",away:"Curaçao",utc:"2026-06-21T01:00:00Z",group:"E",venue:"Kansas City"},{id:36,home:"İspanya",away:"Suudi Arabistan",utc:"2026-06-21T17:00:00Z",group:"H",venue:"Atlanta"},{id:37,home:"Belçika",away:"İran",utc:"2026-06-21T20:00:00Z",group:"G",venue:"Los Angeles"},{id:38,home:"Uruguay",away:"Yeşil Burun Adaları",utc:"2026-06-21T23:00:00Z",group:"H",venue:"Miami"},{id:39,home:"Tunus",away:"Japonya",utc:"2026-06-22T05:00:00Z",group:"F",venue:"Monterrey"},{id:40,home:"Arjantin",away:"Avusturya",utc:"2026-06-22T18:00:00Z",group:"J",venue:"Dallas"},{id:41,home:"Fransa",away:"Irak",utc:"2026-06-22T22:00:00Z",group:"I",venue:"Philadelphia"},{id:42,home:"Norveç",away:"Senegal",utc:"2026-06-23T01:00:00Z",group:"I",venue:"New York/NJ"},{id:43,home:"Portekiz",away:"Özbekistan",utc:"2026-06-23T18:00:00Z",group:"K",venue:"Houston"},{id:44,home:"İngiltere",away:"Gana",utc:"2026-06-23T21:00:00Z",group:"L",venue:"Boston"},{id:45,home:"Panama",away:"Hırvatistan",utc:"2026-06-24T00:00:00Z",group:"L",venue:"Toronto"},{id:46,home:"Ürdün",away:"Cezayir",utc:"2026-06-24T04:00:00Z",group:"J",venue:"Santa Clara"},{id:47,home:"Kanada",away:"İsviçre",utc:"2026-06-24T20:00:00Z",group:"B",venue:"Vancouver"},{id:48,home:"Katar",away:"Bosna Hersek",utc:"2026-06-24T20:00:00Z",group:"B",venue:"Seattle"},{id:49,home:"İskoçya",away:"Brezilya",utc:"2026-06-24T23:00:00Z",group:"C",venue:"Miami"},{id:50,home:"Fas",away:"Haiti",utc:"2026-06-24T23:00:00Z",group:"C",venue:"Atlanta"},{id:51,home:"Kolombiya",away:"Kongo Demokratik Cumhuriyeti",utc:"2026-06-25T04:00:00Z",group:"K",venue:"Guadalajara"},{id:52,home:"Ekvador",away:"Almanya",utc:"2026-06-25T21:00:00Z",group:"E",venue:"New York/NJ"},{id:53,home:"Curaçao",away:"Fildişi Sahili",utc:"2026-06-25T21:00:00Z",group:"E",venue:"Philadelphia"},{id:54,home:"Tunus",away:"Hollanda",utc:"2026-06-26T00:00:00Z",group:"F",venue:"Kansas City"},{id:55,home:"Japonya",away:"İsveç",utc:"2026-06-26T00:00:00Z",group:"F",venue:"Dallas"},{id:56,home:"Norveç",away:"Fransa",utc:"2026-06-26T20:00:00Z",group:"I",venue:"Boston"},{id:57,home:"Senegal",away:"Irak",utc:"2026-06-26T20:00:00Z",group:"I",venue:"Toronto"},{id:58,home:"Yeni Zelanda",away:"Belçika",utc:"2026-06-27T04:00:00Z",group:"G",venue:"Vancouver"},{id:59,home:"Mısır",away:"İran",utc:"2026-06-27T04:00:00Z",group:"G",venue:"Seattle"},{id:60,home:"Uruguay",away:"İspanya",utc:"2026-06-27T01:00:00Z",group:"H",venue:"Guadalajara"},{id:61,home:"Yeşil Burun Adaları",away:"Suudi Arabistan",utc:"2026-06-27T01:00:00Z",group:"H",venue:"Houston"},{id:62,home:"Panama",away:"İngiltere",utc:"2026-06-27T22:00:00Z",group:"L",venue:"New York/NJ"},{id:63,home:"Hırvatistan",away:"Gana",utc:"2026-06-27T22:00:00Z",group:"L",venue:"Philadelphia"},{id:64,home:"Kolombiya",away:"Portekiz",utc:"2026-06-27T23:30:00Z",group:"K",venue:"Miami"},{id:65,home:"Özbekistan",away:"Kongo Demokratik Cumhuriyeti",utc:"2026-06-28T00:30:00Z",group:"K",venue:"Atlanta"},{id:66,home:"Ürdün",away:"Arjantin",utc:"2026-06-28T03:00:00Z",group:"J",venue:"Dallas"},{id:67,home:"Cezayir",away:"Avusturya",utc:"2026-06-28T03:00:00Z",group:"J",venue:"Kansas City"},{id:68,home:"Meksika",away:"Çekya",utc:"2026-06-25T02:00:00Z",group:"A",venue:"Mexico City"},{id:69,home:"Güney Kore",away:"Güney Afrika",utc:"2026-06-25T02:00:00Z",group:"A",venue:"Monterrey"},{id:70,home:"ABD",away:"Türkiye",utc:"2026-06-26T03:00:00Z",group:"D",venue:"Los Angeles"},{id:71,home:"Paraguay",away:"Avustralya",utc:"2026-06-26T03:00:00Z",group:"D",venue:"Santa Clara"}];
 
 // ════════════════════════════════════════════════
@@ -325,12 +401,18 @@ let users={};
 let currentTab="upcoming";
 let predictMatch=null,predData={homeScore:"",awayScore:"",scorers:[""]};
 let scorerSlot=null,scorerSearch="";
+let ogSlot=null,ogTeam=null,ogPlayerSearch="";
+let scorerListSearch="",showOGForm=false,ogFormTeam=null,ogFormSearch="";
 let autoLoading=false,aiLoading=false;
+let anthropicApiKey=localStorage.getItem("wc26_apikey")||"";
+let liveStats={},liveStatsLoading=false;
+const apiHdrs=()=>({"Content-Type":"application/json","x-api-key":anthropicApiKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"});
 
 // Admin State
 let adminEditMatch=null;
 let adminEditData={homeScore:"",awayScore:"",scorers:[""]};
 let adminScorerSlot=null,adminScorerSearch="";
+let adminOgSlot=null,adminOgTeam=null,adminOgPlayerSearch="";
 let autoFetchTimer=null;
 
 // ════════════════════════════════════════════════
@@ -503,9 +585,9 @@ function renderMatches(){
   hs.innerHTML=`<b style="color:#facc15">${myU.points||0}p</b> · ${Object.keys(myU.predictions||{}).length}/${matches.length} tahmin`;
   if(rfBtn){rfBtn.disabled=autoLoading;rfBtn.innerHTML=autoLoading?`<span class="spinner"></span>Yükleniyor...`:"🔄 Şimdi Güncelle";}
 
-  const today=new Date().toISOString().slice(0,10);
+  const today=new Date().toLocaleDateString("sv-SE",{timeZone:"Europe/Istanbul"});
   const vm=matches.filter(m=>{
-    if(currentTab==="today")return m.utc.startsWith(today);
+    if(currentTab==="today")return new Date(m.utc).toLocaleDateString("sv-SE",{timeZone:"Europe/Istanbul"})===today;
     if(currentTab==="finished")return isFinished(m);
     return !isFinished(m);
   });
@@ -577,8 +659,11 @@ function switchTab(t){
 function openPredict(m){
   if(isClosed(m)){showToast("⏰ Tahmin süresi doldu!");return;}
   const ex=users[currentUser]?.predictions?.[m.id];
-  predData=ex?{homeScore:ex.homeScore,awayScore:ex.awayScore,scorers:[...(ex.scorers||[""])]}:{homeScore:"",awayScore:"",scorers:[""]};
-  scorerSlot=null;scorerSearch="";predictMatch=m;
+  predData=ex?{homeScore:ex.homeScore,awayScore:ex.awayScore,scorers:[...(ex.scorers||[])]}:{homeScore:"",awayScore:"",scorers:[]};
+  scorerSlot=null;scorerSearch="";ogSlot=null;ogTeam=null;ogPlayerSearch="";
+  scorerListSearch="";showOGForm=false;ogFormTeam=null;ogFormSearch="";
+  predictMatch=m;
+  fetchLivePlayerStats(m.home,m.away);
   showMain("predict");
 }
 
@@ -595,16 +680,77 @@ function renderPredictPage(){
       <div style="text-align:center"><div style="color:#6b8f6b;font-size:11px;margin-bottom:5px">${m.away}</div><input class="big-num" type="number" id="p-away" min="0" max="20" value="${predData.awayScore}" oninput="predData.awayScore=this.value"></div>
     </div>
     <p style="font-weight:700;font-size:13px;margin-bottom:8px">⚽ Gol Atan Oyuncular <span style="color:#f59e0b;font-weight:400;font-size:11px">(her biri +7p)</span></p>
-    <div id="scorer-slots"></div>
-    <button onclick="addScorer()" style="background:transparent;color:#4ade80;border:1px dashed #2a5a2a;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:12px;margin-bottom:14px">+ Oyuncu Ekle</button>
+    <div id="scorer-chips" style="display:flex;flex-wrap:wrap;gap:6px;min-height:10px;margin-bottom:8px"></div>
+    <div id="scorer-og-form" style="margin-bottom:6px"></div>
+    <button onclick="toggleOGForm()" style="background:transparent;color:#f59e0b;border:1px dashed #c77700;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:12px;margin-bottom:8px;display:block">+ Kendi Kalesine (OG)</button>
+    <input id="scorer-search-inp" class="inp" placeholder="Oyuncu adı ara ve tıkla ekle..." oninput="scorerListSearch=this.value;renderScorerSection()" style="margin-bottom:0">
+    <div id="scorer-list" style="background:#0d1a0d;border:1px solid #1e3a1e;border-radius:0 0 10px 10px;max-height:220px;overflow-y:auto;margin-bottom:14px"></div>
     <div style="background:#0d1a2e;border-radius:12px;padding:12px;margin-bottom:14px">
       <button id="ai-tip-btn" onclick="getAiTip()" class="btn" style="background:#1e2e4e;color:#818cf8;margin-bottom:0">🤖 AI'dan İpucu Al (Canlı Web Araması)</button>
       <div id="ai-tip-text" style="margin-top:10px;color:#a5b4fc;font-size:12px;line-height:1.6"></div>
     </div>
     <button onclick="savePred()" class="btn">💾 Tahmini Kaydet</button>
   `;
-  renderScorerSlots();
+  renderScorerSection();
 }
+
+function renderScorerSection(){
+  const chipsDiv=document.getElementById("scorer-chips");
+  const listDiv=document.getElementById("scorer-list");
+  const ogDiv=document.getElementById("scorer-og-form");
+  if(!chipsDiv||!predictMatch)return;
+
+  chipsDiv.innerHTML=predData.scorers.filter(Boolean).map((s,i)=>{
+    const display=s.replace(/^\[.*?\]\s*/,"").replace("⚽ Kendi Kalesine (OG) - ","OG: ").replace("⚽ ","");
+    return `<span style="background:#1e3a1e;color:#86efac;border:1px solid #2a5a2a;border-radius:20px;padding:4px 10px;font-size:12px;display:inline-flex;align-items:center;gap:6px"><span>⚽ ${display}</span><button onmousedown="event.preventDefault();removePredScorer(${i})" style="background:none;border:none;color:#f87171;cursor:pointer;font-size:15px;padding:0;line-height:1">×</button></span>`;
+  }).join("");
+
+  if(ogDiv){
+    if(showOGForm){
+      let h=`<div style="background:#1a2e1a;border:1px solid #2a5a2a;border-radius:8px;padding:10px">`;
+      h+=`<div style="font-size:11px;color:#6b8f6b;margin-bottom:6px">Kendi kalesine atan oyuncunun takımı:</div>`;
+      h+=`<div style="display:flex;gap:6px;margin-bottom:8px">`;
+      [predictMatch.home,predictMatch.away].forEach(t=>{
+        const sel=ogFormTeam===t;
+        h+=`<button onmousedown="event.preventDefault();ogFormTeam='${t.replace(/'/g,"\\'")}';ogFormSearch='';renderScorerSection()" style="flex:1;border-radius:8px;padding:7px;cursor:pointer;font-size:12px;font-weight:600;border:1px solid ${sel?"#4ade80":"#2a3a2a"};background:${sel?"#1e3a1e":"#162a16"};color:${sel?"#4ade80":"#6b8f6b"}">${FLAG[t]||""} ${t}</button>`;
+      });
+      h+=`</div>`;
+      if(ogFormTeam){
+        h+=`<input class="inp" value="${ogFormSearch}" oninput="ogFormSearch=this.value;renderScorerSection()" placeholder="${ogFormTeam} oyuncusu ara..." style="margin-bottom:4px;background:#162a16">`;
+        const pool=(SQUADS[ogFormTeam]||[]).filter(p=>!ogFormSearch||p.toLowerCase().includes(ogFormSearch.toLowerCase())).slice(0,8);
+        h+=`<div style="background:#162a16;border:1px solid #2a5a2a;border-radius:8px;max-height:150px;overflow-y:auto">`;
+        pool.forEach(p=>{
+          const n=p.replace(/^\[.*?\]\s*/,"").trim();
+          h+=`<div class="ddi" onmousedown="event.preventDefault();addOGScorerPlayer('${n.replace(/'/g,"\\'")}','${ogFormTeam.replace(/'/g,"\\'")}')">⚽ ${n}</div>`;
+        });
+        h+=`</div>`;
+      }
+      h+=`</div>`;
+      ogDiv.innerHTML=h;
+    } else {
+      ogDiv.innerHTML="";
+    }
+  }
+
+  if(listDiv){
+    const players=[...(SQUADS[predictMatch.home]||[]),...(SQUADS[predictMatch.away]||[])];
+    const filtered=scorerListSearch?players.filter(p=>p.toLowerCase().includes(scorerListSearch.toLowerCase())):players;
+    const loadingBanner=liveStatsLoading?`<div style="padding:6px 12px;font-size:11px;color:#6b8f6b;display:flex;align-items:center;gap:6px;border-bottom:1px solid #1e3a1e"><span class="spinner"></span>Transfermarkt istatistikleri yükleniyor...</div>`:"";
+    listDiv.innerHTML=loadingBanner+filtered.slice(0,30).map(p=>{
+      const name=p.replace(/^\[.*?\]\s*/,"").trim();
+      const pos=(p.match(/^\[.*?-\s*(\w+)\]/)||[])[1]||"";
+      const st=getStats(name);
+      const stHtml=st?`<span style="color:#6b8f6b;font-size:10px;margin-left:auto;padding-left:8px;white-space:nowrap">${st.c}M · ${st.g}⚽ · ${st.a}🎯</span>`:`<span style="color:#334;font-size:10px;margin-left:auto;padding-left:8px">—</span>`;
+      return `<div class="ddi" style="display:flex;align-items:center" onmousedown="event.preventDefault();addPredScorer('${p.replace(/'/g,"\\'")}')"><span style="color:#4ade80;font-size:10px;min-width:24px">${pos}</span><span>${name}</span>${stHtml}</div>`;
+    }).join("")||(filtered.length===0?`<div class="ddi" style="color:#556;pointer-events:none">Oyuncu bulunamadı</div>`:"");
+    listDiv.style.display="block";
+  }
+}
+
+function addPredScorer(p){predData.scorers.push(p);scorerListSearch="";const i=document.getElementById("scorer-search-inp");if(i)i.value="";renderScorerSection();}
+function removePredScorer(i){predData.scorers.splice(i,1);renderScorerSection();}
+function toggleOGForm(){showOGForm=!showOGForm;if(!showOGForm){ogFormTeam=null;ogFormSearch="";}renderScorerSection();}
+function addOGScorerPlayer(name,team){predData.scorers.push(`⚽ Kendi Kalesine (OG) - ${name} (${team})`);showOGForm=false;ogFormTeam=null;ogFormSearch="";renderScorerSection();}
 
 function renderScorerSlots(){
   const sl=document.getElementById("scorer-slots");if(!sl||!predictMatch)return;
@@ -617,12 +763,12 @@ function renderScorerSlots(){
     inp.style.cssText="flex:1;margin-bottom:0;background:"+(scorerSlot===i?"#1e2e1e":"#162a16");
     inp.value=scorerSlot===i?scorerSearch:s;
     inp.onfocus=()=>{scorerSlot=i;scorerSearch=s||"";renderScorerSlots();};
-    inp.oninput=e=>{scorerSearch=e.target.value;predData.scorers[i]=e.target.value;renderScorerSlots();};
+    inp.oninput=e=>{scorerSearch=e.target.value;predData.scorers[i]=e.target.value;if(ogSlot===i&&!e.target.value.startsWith("⚽ Kendi Kalesine")){ogSlot=null;ogTeam=null;}renderScorerSlots();};
     row.appendChild(inp);
     if(predData.scorers.length>1){
       const del=document.createElement("button");
       del.style.cssText="background:#2a1010;color:#f87171;border:none;border-radius:8px;width:34px;cursor:pointer;font-size:16px;flex-shrink:0";
-      del.textContent="×";del.onclick=()=>{predData.scorers.splice(i,1);if(scorerSlot>=predData.scorers.length)scorerSlot=null;renderScorerSlots();};
+      del.textContent="×";del.onclick=()=>{predData.scorers.splice(i,1);if(scorerSlot>=predData.scorers.length)scorerSlot=null;if(ogSlot===i){ogSlot=null;ogTeam=null;}renderScorerSlots();};
       row.appendChild(del);
     }
     wrap.appendChild(row);
@@ -632,11 +778,59 @@ function renderScorerSlots(){
         const dd=document.createElement("div");dd.className="dd";
         filtered.forEach(p=>{
           const di=document.createElement("div");di.className="ddi";di.textContent=p;
-          di.onmousedown=e=>{e.preventDefault();predData.scorers[i]=p;scorerSlot=null;scorerSearch="";renderScorerSlots();};
+          di.onmousedown=e=>{
+            e.preventDefault();
+            predData.scorers[i]=p;
+            if(p==="⚽ Kendi Kalesine (OG)"){ogSlot=i;ogTeam=null;ogPlayerSearch="";}
+            else if(ogSlot===i){ogSlot=null;ogTeam=null;}
+            scorerSlot=null;scorerSearch="";
+            renderScorerSlots();
+          };
           dd.appendChild(di);
         });
         wrap.appendChild(dd);
       }
+    }
+    if(s==="⚽ Kendi Kalesine (OG)"){
+      const ogForm=document.createElement("div");
+      ogForm.style.cssText="background:#1a2e1a;border:1px solid #2a5a2a;border-radius:8px;padding:10px;margin-top:4px";
+      const lbl=document.createElement("div");lbl.style.cssText="font-size:11px;color:#6b8f6b;margin-bottom:6px";
+      lbl.textContent="Kendi kalesine atan oyuncunun takımı:";
+      ogForm.appendChild(lbl);
+      const teamRow=document.createElement("div");teamRow.style.cssText="display:flex;gap:6px;margin-bottom:8px";
+      [predictMatch.home,predictMatch.away].forEach(team=>{
+        const btn=document.createElement("button");
+        const sel=ogSlot===i&&ogTeam===team;
+        btn.style.cssText=`flex:1;border-radius:8px;padding:7px;cursor:pointer;font-size:12px;font-weight:600;border:1px solid ${sel?"#4ade80":"#2a3a2a"};background:${sel?"#1e3a1e":"#162a16"};color:${sel?"#4ade80":"#6b8f6b"}`;
+        btn.textContent=`${FLAG[team]||""} ${team}`;
+        btn.onmousedown=e=>{e.preventDefault();ogSlot=i;ogTeam=team;ogPlayerSearch="";renderScorerSlots();};
+        teamRow.appendChild(btn);
+      });
+      ogForm.appendChild(teamRow);
+      if(ogSlot===i&&ogTeam){
+        const plInp=document.createElement("input");plInp.className="inp";plInp.type="text";
+        plInp.placeholder=`${ogTeam} oyuncusu ara...`;
+        plInp.style.cssText="margin-bottom:4px;background:#162a16";plInp.value=ogPlayerSearch;
+        plInp.oninput=e=>{ogPlayerSearch=e.target.value;renderScorerSlots();};
+        ogForm.appendChild(plInp);
+        const ogPool=(SQUADS[ogTeam]||[]).filter(p=>!ogPlayerSearch||p.toLowerCase().includes(ogPlayerSearch.toLowerCase())).slice(0,8);
+        if(ogPool.length){
+          const ogDd=document.createElement("div");ogDd.style.cssText="background:#162a16;border:1px solid #2a5a2a;border-radius:8px;max-height:150px;overflow-y:auto";
+          ogPool.forEach(p=>{
+            const playerName=p.replace(/^\[.*?\]\s*/,"").trim();
+            const di=document.createElement("div");di.className="ddi";di.textContent=`${playerName} (${ogTeam})`;
+            di.onmousedown=e=>{
+              e.preventDefault();
+              predData.scorers[i]=`⚽ Kendi Kalesine (OG) - ${playerName} (${ogTeam})`;
+              ogSlot=null;ogTeam=null;ogPlayerSearch="";
+              renderScorerSlots();
+            };
+            ogDd.appendChild(di);
+          });
+          ogForm.appendChild(ogDd);
+        }
+      }
+      wrap.appendChild(ogForm);
     }
     sl.appendChild(wrap);
   });
@@ -662,7 +856,8 @@ async function getAiTip(){
   const btn=document.getElementById("ai-tip-btn");
   if(btn)btn.innerHTML=`<span class="spinner"></span>Düşünüyor...`;
   try{
-    const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},
+    if(!anthropicApiKey){const el=document.getElementById("ai-tip-text");if(el)el.textContent="⚠️ API anahtarı girilmemiş. Admin panelinden ekleyin.";aiLoading=false;if(btn)btn.innerHTML="🤖 AI'dan İpucu Al";return;}
+    const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:apiHdrs(),
       body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:500,tools:[{type:"web_search_20250305",name:"web_search"}],
         messages:[{role:"user",content:`2026 FIFA WC: ${predictMatch.home} - ${predictMatch.away}. Skor tahmini ve goller. Türkçe, kısa.`}]})});
     const d=await r.json();
@@ -671,6 +866,48 @@ async function getAiTip(){
   }catch{const el=document.getElementById("ai-tip-text");if(el)el.textContent="AI yanıt veremiyor.";}
   aiLoading=false;
   if(btn)btn.innerHTML="🤖 AI'dan İpucu Al (Canlı Web Araması)";
+}
+
+async function fetchLivePlayerStats(home,away){
+  if(!anthropicApiKey)return;
+  const cacheKey="wc26/statsCache/"+[home,away].sort().join("_").replace(/\s+/g,"");
+  if(db){
+    try{
+      const snap=await db.ref(cacheKey).once("value");
+      if(snap.exists()){Object.assign(liveStats,snap.val());renderScorerSection();return;}
+    }catch{}
+  }
+  liveStatsLoading=true;renderScorerSection();
+  try{
+    const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:apiHdrs(),
+      body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1500,tools:[{type:"web_search_20250305",name:"web_search"}],
+        messages:[{role:"user",content:`Transfermarkt'tan ${home} ve ${away} milli takım oyuncularının güncel uluslararası istatistikleri. Her oyuncu için caps, goals, assists verileri. Sadece JSON object döndür: {"OyuncuAdı":{"c":caps_sayısı,"g":gol_sayısı,"a":asist_sayısı}}. Tüm kadro oyuncularını dahil et.`}]})});
+    const d=await r.json();
+    const raw=(d.content||[]).map(b=>b.type==="text"?b.text:"").join("\n");
+    const clean=raw.replace(/```json\n?|```/g,"").trim();
+    const s=clean.indexOf("{"),e=clean.lastIndexOf("}");
+    if(s!==-1){
+      const fetched=JSON.parse(clean.slice(s,e+1));
+      Object.assign(liveStats,fetched);
+      if(db)db.ref(cacheKey).set(fetched).catch(()=>{});
+    }
+  }catch(err){console.warn("Stats fetch:",err.message);}
+  liveStatsLoading=false;renderScorerSection();
+}
+
+function saveApiKey(){
+  const k=(document.getElementById("admin-api-inp")?.value||"").trim();
+  if(!k){showToast("⚠️ Geçerli bir API anahtarı gir");return;}
+  anthropicApiKey=k;
+  localStorage.setItem("wc26_apikey",k);
+  showToast("✅ API anahtarı kaydedildi!");
+  renderAdmin();
+}
+
+function clearStatsCache(){
+  liveStats={};
+  if(db)db.ref("wc26/statsCache").remove().catch(()=>{});
+  showToast("🗑️ İstatistik cache temizlendi");
 }
 
 // ════════════════════════════════════════════════
@@ -696,8 +933,27 @@ function renderLB(){
 function renderAdmin(){
   const list=document.getElementById("admin-list");
   const rfBtn=document.getElementById("admin-rf-btn");
-  if(rfBtn){rfBtn.disabled=autoLoading;rfBtn.innerHTML=autoLoading?`<span class="spinner"></span>Yükleniyor...`:"🤖 AI ile Otomatik Çek";}
+  if(rfBtn){rfBtn.disabled=autoLoading;rfBtn.innerHTML=autoLoading?`<span class="spinner"></span>Yükleniyor...`:"🔄 Canlı Sonuçları Çek";}
   if(!list)return;
+  const apiSection=document.getElementById("admin-api-section");
+  if(apiSection){
+    const hasKey=!!anthropicApiKey;
+    apiSection.innerHTML=`
+      <div class="card" style="margin-bottom:14px;border-color:#1e3a1e">
+        <div style="font-size:13px;font-weight:700;color:#4ade80;margin-bottom:8px">📡 Canlı Veri Kaynağı</div>
+        <div style="font-size:11px;color:#6b8f6b;margin-bottom:10px;line-height:1.7">
+          ✅ <b>ESPN API</b> — Maç sonuçları (API key gerektirmez, otomatik çalışır)<br>
+          ${hasKey?`✅`:`⬜`} <b>Anthropic API</b> — AI oyuncu ipuçları (opsiyonel)
+        </div>
+        <div style="font-size:12px;color:#a0b8a0;margin-bottom:6px">Anthropic API Anahtarı (opsiyonel):</div>
+        <div style="display:flex;gap:8px">
+          <input id="admin-api-inp" class="inp" type="password" placeholder="sk-ant-api03-... (opsiyonel)" value="${anthropicApiKey}" style="flex:1;margin-bottom:0;font-family:monospace;font-size:12px">
+          <button class="btn-sm" onclick="saveApiKey()" style="background:#4ade80;color:#0a1a0a;flex-shrink:0;padding:0 14px">Kaydet</button>
+        </div>
+        ${hasKey?`<button onclick="clearStatsCache()" style="margin-top:8px;background:transparent;color:#6b8f6b;border:1px solid #2a3a2a;border-radius:8px;padding:5px 12px;cursor:pointer;font-size:11px">🗑️ İstatistik Cache'ini Temizle</button>`:""}
+      </div>
+    `;
+  }
   const closed=matches.filter(m=>isClosed(m));
   if(!closed.length){list.innerHTML=`<p style="color:#556;text-align:center;margin-top:40px">Henüz kilitli maç yok.</p>`;return;}
   list.innerHTML="";
@@ -737,6 +993,7 @@ function openAdminEdit(mid){
   }
   adminScorerSlot=null;
   adminScorerSearch="";
+  adminOgSlot=null;adminOgTeam=null;adminOgPlayerSearch="";
   showMain("admin-edit");
 }
 
@@ -775,14 +1032,12 @@ function renderAdminScorerSlots(){
     inp.style.cssText="flex:1;margin-bottom:0;background:"+(adminScorerSlot===i?"#2a1010":"#162a16");
     inp.value=adminScorerSlot===i?adminScorerSearch:s;
     inp.onfocus=()=>{adminScorerSlot=i;adminScorerSearch=s||"";renderAdminScorerSlots();};
-    inp.oninput=e=>{adminScorerSearch=e.target.value;adminEditData.scorers[i]=e.target.value;renderAdminScorerSlots();};
+    inp.oninput=e=>{adminScorerSearch=e.target.value;adminEditData.scorers[i]=e.target.value;if(adminOgSlot===i&&!e.target.value.startsWith("⚽ Kendi Kalesine")){adminOgSlot=null;adminOgTeam=null;}renderAdminScorerSlots();};
     row.appendChild(inp);
-    
     const del=document.createElement("button");
     del.style.cssText="background:#2a1010;color:#f87171;border:none;border-radius:8px;width:34px;cursor:pointer;font-size:16px;flex-shrink:0";
-    del.textContent="×";del.onclick=()=>{adminEditData.scorers.splice(i,1);if(adminScorerSlot>=adminEditData.scorers.length)adminScorerSlot=null;renderAdminScorerSlots();};
+    del.textContent="×";del.onclick=()=>{adminEditData.scorers.splice(i,1);if(adminScorerSlot>=adminEditData.scorers.length)adminScorerSlot=null;if(adminOgSlot===i){adminOgSlot=null;adminOgTeam=null;}renderAdminScorerSlots();};
     row.appendChild(del);
-    
     wrap.appendChild(row);
     if(adminScorerSlot===i){
       const filtered=pool.filter(p=>!adminScorerSearch||p.toLowerCase().includes(adminScorerSearch.toLowerCase()));
@@ -790,11 +1045,59 @@ function renderAdminScorerSlots(){
         const dd=document.createElement("div");dd.className="dd";
         filtered.forEach(p=>{
           const di=document.createElement("div");di.className="ddi";di.textContent=p;
-          di.onmousedown=e=>{e.preventDefault();adminEditData.scorers[i]=p;adminScorerSlot=null;adminScorerSearch="";renderAdminScorerSlots();};
+          di.onmousedown=e=>{
+            e.preventDefault();
+            adminEditData.scorers[i]=p;
+            if(p==="⚽ Kendi Kalesine (OG)"){adminOgSlot=i;adminOgTeam=null;adminOgPlayerSearch="";}
+            else if(adminOgSlot===i){adminOgSlot=null;adminOgTeam=null;}
+            adminScorerSlot=null;adminScorerSearch="";
+            renderAdminScorerSlots();
+          };
           dd.appendChild(di);
         });
         wrap.appendChild(dd);
       }
+    }
+    if(s==="⚽ Kendi Kalesine (OG)"){
+      const ogForm=document.createElement("div");
+      ogForm.style.cssText="background:#1a0a0a;border:1px solid #f87171;border-radius:8px;padding:10px;margin-top:4px";
+      const lbl=document.createElement("div");lbl.style.cssText="font-size:11px;color:#f87171;margin-bottom:6px";
+      lbl.textContent="Kendi kalesine atan oyuncunun takımı:";
+      ogForm.appendChild(lbl);
+      const teamRow=document.createElement("div");teamRow.style.cssText="display:flex;gap:6px;margin-bottom:8px";
+      [adminEditMatch.home,adminEditMatch.away].forEach(team=>{
+        const btn=document.createElement("button");
+        const sel=adminOgSlot===i&&adminOgTeam===team;
+        btn.style.cssText=`flex:1;border-radius:8px;padding:7px;cursor:pointer;font-size:12px;font-weight:600;border:1px solid ${sel?"#f87171":"#3a1a1a"};background:${sel?"#3a1010":"#1a0a0a"};color:${sel?"#f87171":"#6b4b4b"}`;
+        btn.textContent=`${FLAG[team]||""} ${team}`;
+        btn.onmousedown=e=>{e.preventDefault();adminOgSlot=i;adminOgTeam=team;adminOgPlayerSearch="";renderAdminScorerSlots();};
+        teamRow.appendChild(btn);
+      });
+      ogForm.appendChild(teamRow);
+      if(adminOgSlot===i&&adminOgTeam){
+        const plInp=document.createElement("input");plInp.className="inp";plInp.type="text";
+        plInp.placeholder=`${adminOgTeam} oyuncusu ara...`;
+        plInp.style.cssText="margin-bottom:4px;background:#1a0a0a";plInp.value=adminOgPlayerSearch;
+        plInp.oninput=e=>{adminOgPlayerSearch=e.target.value;renderAdminScorerSlots();};
+        ogForm.appendChild(plInp);
+        const ogPool=(SQUADS[adminOgTeam]||[]).filter(p=>!adminOgPlayerSearch||p.toLowerCase().includes(adminOgPlayerSearch.toLowerCase())).slice(0,8);
+        if(ogPool.length){
+          const ogDd=document.createElement("div");ogDd.style.cssText="background:#1a0a0a;border:1px solid #f87171;border-radius:8px;max-height:150px;overflow-y:auto";
+          ogPool.forEach(p=>{
+            const playerName=p.replace(/^\[.*?\]\s*/,"").trim();
+            const di=document.createElement("div");di.className="ddi";di.textContent=`${playerName} (${adminOgTeam})`;
+            di.onmousedown=e=>{
+              e.preventDefault();
+              adminEditData.scorers[i]=`⚽ Kendi Kalesine (OG) - ${playerName} (${adminOgTeam})`;
+              adminOgSlot=null;adminOgTeam=null;adminOgPlayerSearch="";
+              renderAdminScorerSlots();
+            };
+            ogDd.appendChild(di);
+          });
+          ogForm.appendChild(ogDd);
+        }
+      }
+      wrap.appendChild(ogForm);
     }
     sl.appendChild(wrap);
   });
@@ -814,33 +1117,94 @@ async function saveAdminResultFinal(){
 }
 
 // ════════════════════════════════════════════════
+//  ESPN FREE API (key gerektirmez)
+// ════════════════════════════════════════════════
+const ESPN_MAP={"Mexico":"Meksika","South Africa":"Güney Afrika","South Korea":"Güney Kore",
+  "Czech Republic":"Çekya","Czechia":"Çekya","Canada":"Kanada",
+  "Bosnia and Herzegovina":"Bosna Hersek","Bosnia & Herzegovina":"Bosna Hersek",
+  "Qatar":"Katar","Switzerland":"İsviçre","Brazil":"Brezilya","Morocco":"Fas",
+  "Haiti":"Haiti","Scotland":"İskoçya","USA":"ABD","United States":"ABD",
+  "Paraguay":"Paraguay","Australia":"Avustralya","Turkey":"Türkiye","Germany":"Almanya",
+  "Curacao":"Curaçao","Curaçao":"Curaçao","Ivory Coast":"Fildişi Sahili",
+  "Côte d'Ivoire":"Fildişi Sahili","Ecuador":"Ekvador","Netherlands":"Hollanda",
+  "Japan":"Japonya","Sweden":"İsveç","Tunisia":"Tunus","Belgium":"Belçika",
+  "Egypt":"Mısır","Iran":"İran","New Zealand":"Yeni Zelanda","Spain":"İspanya",
+  "Cape Verde":"Yeşil Burun Adaları","Saudi Arabia":"Suudi Arabistan","Uruguay":"Uruguay",
+  "France":"Fransa","Senegal":"Senegal","Iraq":"Irak","Norway":"Norveç",
+  "Argentina":"Arjantin","Algeria":"Cezayir","Austria":"Avusturya","Jordan":"Ürdün",
+  "Portugal":"Portekiz","DR Congo":"Kongo Demokratik Cumhuriyeti",
+  "Democratic Republic of Congo":"Kongo Demokratik Cumhuriyeti",
+  "Uzbekistan":"Özbekistan","Colombia":"Kolombiya","England":"İngiltere",
+  "Croatia":"Hırvatistan","Ghana":"Gana","Panama":"Panama"};
+
+async function fetchScoresFromESPN(){
+  try{
+    const r=await fetch("https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard");
+    if(!r.ok)return[];
+    const data=await r.json();
+    return(data.events||[]).filter(ev=>ev.status?.type?.completed).map(ev=>{
+      const comp=ev.competitions?.[0];if(!comp)return null;
+      const hC=comp.competitors?.find(c=>c.homeAway==="home");
+      const aC=comp.competitors?.find(c=>c.homeAway==="away");
+      if(!hC||!aC)return null;
+      const home=ESPN_MAP[hC.team?.displayName];
+      const away=ESPN_MAP[aC.team?.displayName];
+      if(!home||!away)return null;
+      const scorers=(comp.details||[]).filter(d=>d.type?.text==="Goal"||d.type?.text==="Gol")
+        .map(d=>d.athletesInvolved?.[0]?.displayName).filter(Boolean);
+      return{home,away,homeScore:parseInt(hC.score)||0,awayScore:parseInt(aC.score)||0,scorers};
+    }).filter(Boolean);
+  }catch{return[];}
+}
+
+// ════════════════════════════════════════════════
 //  AUTO-FETCH
 // ════════════════════════════════════════════════
 async function autoFetch(silent=false){
   const todo=matches.filter(m=>isClosed(m)&&!isFinished(m));
   if(!todo.length){if(!silent)showToast("Sonuç bekleyen maç yok.");return;}
   autoLoading=true;rerender();
-  if(!silent)showToast("🔄 Sonuçlar aranıyor...",12000);
+  if(!silent)showToast("🔄 ESPN'den sonuçlar alınıyor...",12000);
+  let updated=0;
+
+  // 1) ESPN (key gerektirmez)
   try{
-    const list=todo.map(m=>`${m.home} - ${m.away}`).join("; ");
-    const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:800,tools:[{type:"web_search_20250305",name:"web_search"}],
-        messages:[{role:"user",content:`2026 FIFA WC bitmiş maç sonuçları: ${list}. Sadece bitmiş olanlar için JSON array: [{"home":"X","away":"Y","homeScore":1,"awayScore":0,"scorers":["Oyuncu"]}]. Bitmemişleri dahil etme. Hiç bitmemişse sadece [].`}]})});
-    const d=await r.json();
-    const raw=d.content.map(b=>b.type==="text"?b.text:"").join("\n");
-    const clean=raw.replace(/```json\n?|```/g,"").trim();
-    const s=clean.indexOf("["),e=clean.lastIndexOf("]");
-    if(s===-1){if(!silent)showToast("Biten maç bulunamadı.");autoLoading=false;rerender();return;}
-    const results=JSON.parse(clean.slice(s,e+1));
-    if(!results.length){if(!silent)showToast("Henüz sonuçlanan maç yok.");autoLoading=false;rerender();return;}
-    results.forEach(res=>{
-      const idx=matches.findIndex(m=>m.home===res.home&&m.away===res.away);
-      if(idx!==-1)matches[idx]={...matches[idx],result:{homeScore:res.homeScore,awayScore:res.awayScore,scorers:res.scorers||[]}};
+    const espn=await fetchScoresFromESPN();
+    espn.forEach(res=>{
+      const idx=matches.findIndex(m=>m.home===res.home&&m.away===res.away&&isClosed(m)&&!isFinished(m));
+      if(idx!==-1){matches[idx]={...matches[idx],result:res};updated++;}
     });
-    await persistMatches();await persistUsers();
-    if(!silent)showToast(`✅ ${results.length} maç güncellendi!`);
-    else showToast(`🔄 Otomatik güncelleme: ${results.length} maç güncellendi`,4000);
-  }catch(err){if(!silent)showToast("Hata: "+err.message);}
+    if(updated>0){
+      await persistMatches();await persistUsers();
+      if(!silent)showToast(`✅ ${updated} maç ESPN'den güncellendi!`);
+      else showToast(`🔄 Otomatik: ${updated} maç güncellendi`,4000);
+      autoLoading=false;rerender();return;
+    }
+  }catch{}
+
+  // 2) Anthropic fallback (key varsa)
+  if(anthropicApiKey){
+    try{
+      const list=todo.map(m=>`${m.home} - ${m.away}`).join("; ");
+      const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:apiHdrs(),
+        body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:800,tools:[{type:"web_search_20250305",name:"web_search"}],
+          messages:[{role:"user",content:`2026 FIFA WC bitmiş maç sonuçları: ${list}. JSON array: [{"home":"X","away":"Y","homeScore":1,"awayScore":0,"scorers":["Oyuncu"]}]. Bitmemişleri dahil etme. Bitmiş yoksa [].`}]})});
+      const d=await r.json();
+      const raw=d.content.map(b=>b.type==="text"?b.text:"").join("\n");
+      const clean=raw.replace(/```json\n?|```/g,"").trim();
+      const s=clean.indexOf("["),e=clean.lastIndexOf("]");
+      if(s!==-1){
+        JSON.parse(clean.slice(s,e+1)).forEach(res=>{
+          const idx=matches.findIndex(m=>m.home===res.home&&m.away===res.away&&!isFinished(m));
+          if(idx!==-1){matches[idx]={...matches[idx],result:{homeScore:res.homeScore,awayScore:res.awayScore,scorers:res.scorers||[]}};updated++;}
+        });
+        if(updated>0){await persistMatches();await persistUsers();}
+      }
+    }catch(err){if(!silent)showToast("Hata: "+err.message);}
+  }
+
+  if(!updated){if(!silent)showToast("Biten maç bulunamadı. Admin manuel girebilir.");}
+  else if(!silent)showToast(`✅ ${updated} maç güncellendi!`);
   autoLoading=false;rerender();
 }
 
