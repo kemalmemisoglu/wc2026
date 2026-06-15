@@ -38,6 +38,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a1a0a;color:#e8f5e
 .card{background:#0f240f;border:1px solid #1e3a1e;border-radius:18px;padding:22px 16px}
 .inp{width:100%;background:#162a16;border:1px solid #2a3a2a;border-radius:10px;padding:10px 12px;color:#e8f5e9;font-size:14px;margin-bottom:10px;outline:none}
 .inp:focus{border-color:#4ade80}
+.inp:disabled{opacity:0.5;cursor:not-allowed}
 .btn{width:100%;background:#4ade80;color:#0a1a0a;border:none;border-radius:10px;padding:12px;font-weight:700;font-size:14px;cursor:pointer;margin-bottom:10px;display:block}
 .btn:disabled{opacity:.5;cursor:not-allowed}
 .btn-outline{background:transparent;color:#4ade80;border:1px solid #4ade80;border-radius:10px;padding:9px 14px;cursor:pointer;font-size:13px;font-weight:600}
@@ -81,7 +82,6 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a1a0a;color:#e8f5e
 <body>
 <div class="toast" id="toast"></div>
 
-<!-- ═══ LOGIN PAGE ═══ -->
 <div id="pg-login" class="page active">
 <div class="center">
 <div class="card" style="max-width:400px;width:100%">
@@ -110,7 +110,6 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a1a0a;color:#e8f5e
 </div>
 </div>
 
-<!-- ═══ MAIN NAV ═══ -->
 <nav class="nav" id="main-nav" style="display:none">
   <span class="logo">⚽ WC 2026</span>
   <div style="display:flex;align-items:center;gap:6px">
@@ -125,12 +124,9 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a1a0a;color:#e8f5e
   <div><button class="nav-btn" onclick="doLogout()">Çıkış</button></div>
 </nav>
 
-<!-- ═══ APP SHELL ═══ -->
 <div class="app-layout" id="app-shell" style="display:none">
 
-  <!-- MAIN CONTENT -->
   <div style="flex:1;min-width:0">
-    <!-- MATCHES -->
     <div id="pg-matches" class="page active" style="padding:16px 12px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;flex-wrap:wrap;gap:8px">
         <div>
@@ -147,25 +143,21 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a1a0a;color:#e8f5e
       <div id="match-list"></div>
     </div>
 
-    <!-- PREDICT -->
     <div id="pg-predict" class="page" style="padding:16px 12px">
       <button onclick="showMain('matches')" style="background:transparent;color:#6b8f6b;border:none;cursor:pointer;font-size:13px;margin-bottom:12px;padding:0">← Geri</button>
       <div class="card" id="predict-card"></div>
     </div>
 
-    <!-- ADMIN EDIT -->
     <div id="pg-admin-edit" class="page" style="padding:16px 12px">
       <button onclick="showMain('admin')" style="background:transparent;color:#f87171;border:none;cursor:pointer;font-size:13px;margin-bottom:12px;padding:0">← İptal</button>
       <div class="card" id="admin-edit-card"></div>
     </div>
 
-    <!-- LEADERBOARD -->
     <div id="pg-lb" class="page" style="padding:16px 12px">
       <h2 style="margin:0 0 14px;font-size:20px;font-weight:800">🏆 Sıralama Tablosu</h2>
       <div id="lb-list"></div>
     </div>
 
-    <!-- ADMIN PANEL -->
     <div id="pg-admin" class="page" style="padding:16px 12px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
         <h2 style="margin:0;color:#f87171;font-size:17px">🔧 Admin – Sonuç Listesi</h2>
@@ -176,7 +168,6 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a1a0a;color:#e8f5e
     </div>
   </div>
 
-  <!-- SIDEBAR SCOREBOARD -->
   <aside class="sidebar" id="sidebar">
     <div class="sb-title">🏆 Sıralama <span id="sb-player-count" style="color:#6b8f6b;font-size:11px;font-weight:400"></span></div>
     <div id="sb-list"></div>
@@ -267,12 +258,6 @@ for(const team in RAW_SQUADS){
 const FLAG={"Meksika":"🇲🇽","Güney Afrika":"🇿🇦","Güney Kore":"🇰🇷","Çekya":"🇨🇿","Kanada":"🇨🇦","Bosna Hersek":"🇧🇦","Katar":"🇶🇦","İsviçre":"🇨🇭","Brezilya":"🇧🇷","Fas":"🇲🇦","Haiti":"🇭🇹","İskoçya":"🏴󠁧󠁢󠁳󠁣󠁴󠁿","ABD":"🇺🇸","Paraguay":"🇵🇾","Avustralya":"🇦🇺","Türkiye":"🇹🇷","Almanya":"🇩🇪","Curaçao":"🇨🇼","Fildişi Sahili":"🇨🇮","Ekvador":"🇪🇨","Hollanda":"🇳🇱","Japonya":"🇯🇵","İsveç":"🇸🇪","Tunus":"🇹🇳","Belçika":"🇧🇪","Mısır":"🇪🇬","İran":"🇮🇷","Yeni Zelanda":"🇳🇿","İspanya":"🇪🇸","Yeşil Burun Adaları":"🇨🇻","Suudi Arabistan":"🇸🇦","Uruguay":"🇺🇾","Fransa":"🇫🇷","Senegal":"🇸🇳","Irak":"🇮🇶","Norveç":"🇳🇴","Arjantin":"🇦🇷","Cezayir":"🇩🇿","Avusturya":"🇦🇹","Ürdün":"🇯🇴","Portekiz":"🇵🇹","Kongo Demokratik Cumhuriyeti":"🇨🇩","Özbekistan":"🇺🇿","Kolombiya":"🇨🇴","İngiltere":"🏴󠁧󠁢󠁥󠁮󠁧󠁿","Hırvatistan":"🇭🇷","Gana":"🇬🇭","Panama":"🇵🇦"};
 
 // Wikipedia 2026 Dünya Kupası kadroları — milli takım caps (maç) + gol
-// ════════════════════════════════════════════════
-//  PLAYER_STATS — Wikipedia 2026 FIFA Dünya Kupası kadroları
-//  Veri: milli takım caps (c) + gol (g). Turnuva başı (11 Haz 2026) itibariyle.
-//  Anahtarlar RAW_SQUADS'taki oyuncu isimleriyle BİREBİR eşleşir.
-//  Asist (a) kaldırıldı. Wikipedia'nın final kadrosunda olmayan oyuncular yok (UI'da "—" görünür).
-// ════════════════════════════════════════════════
 const PLAYER_STATS = {
   // ── Meksika ──
   "Carlos Acevedo":{c:7,g:0},"Guillermo Ochoa":{c:152,g:0},"Raúl Rangel":{c:13,g:0},
@@ -626,7 +611,7 @@ let currentUser=null,isAdmin=false;
 let matches=ALL_MATCHES.map(m=>({...m}));
 let users={};
 let currentTab="upcoming";
-let predictMatch=null,predData={homeScore:"",awayScore:"",scorers:[""]};
+let predictMatch=null,predData={homeScore:"",awayScore:"",scorers:[]};
 let scorerSlot=null,scorerSearch="";
 let ogSlot=null,ogTeam=null,ogPlayerSearch="";
 let scorerListSearch="",showOGForm=false,ogFormTeam=null,ogFormSearch="";
@@ -637,7 +622,7 @@ const apiHdrs=()=>({"Content-Type":"application/json","x-api-key":anthropicApiKe
 
 // Admin State
 let adminEditMatch=null;
-let adminEditData={homeScore:"",awayScore:"",scorers:[""]};
+let adminEditData={homeScore:"",awayScore:"",scorers:[]};
 let adminScorerListSearch="",adminShowOGForm=false,adminOgFormTeam=null,adminOgFormSearch="";
 let autoFetchTimer=null;
 
@@ -730,7 +715,7 @@ function rerender(){
 // ════════════════════════════════════════════════
 //  AUTH
 // ════════════════════════════════════════════════
-function doLogin(){
+async function doLogin(){
   const name=document.getElementById("li-name").value.trim();
   const err=document.getElementById("li-err");
   if(!name||name.length<2){err.textContent="En az 2 karakter gir.";err.style.display="block";return;}
@@ -738,16 +723,17 @@ function doLogin(){
   currentUser=name;isAdmin=false;
   setCookie("wc26_user",name);
   
-  if(!users[currentUser]){
-    users[currentUser]={points:0, predictions:{}};
-    persistUsers();
+  if(db){
+    const snap = await db.ref("wc26/users/"+currentUser).once("value");
+    if(!snap.exists()){
+        await db.ref("wc26/users/"+currentUser).set({points:0, predictions:{}});
+    }
   }
   enterApp();
 }
 
 function doAdminLogin(){
   const key=document.getElementById("li-akey").value;
-  // Şifre burada güncellendi
   if(key==="8389.Kemal**"){
     isAdmin=true;currentUser="__admin__";
     setCookie("wc26_admin","1");
@@ -901,14 +887,14 @@ function renderPredictPage(){
     <h2 style="text-align:center;font-size:16px;font-weight:800;margin-bottom:3px">${FLAG[m.home]||""} ${m.home} – ${m.away} ${FLAG[m.away]||""}</h2>
     <p style="color:#6b8f6b;text-align:center;font-size:12px;margin-bottom:18px">${fmtTR(m.utc)} TR · Grup ${m.group} · ${m.venue}</p>
     <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:20px">
-      <div style="text-align:center"><div style="color:#6b8f6b;font-size:11px;margin-bottom:5px">${m.home}</div><input class="big-num" type="number" id="p-home" min="0" max="20" value="${predData.homeScore}" oninput="predData.homeScore=this.value"></div>
+      <div style="text-align:center"><div style="color:#6b8f6b;font-size:11px;margin-bottom:5px">${m.home}</div><input class="big-num" type="number" id="p-home" min="0" max="20" value="${predData.homeScore}" oninput="predData.homeScore=this.value;renderScorerSection()"></div>
       <span style="font-size:26px;color:#2a4a2a;padding-top:18px">–</span>
-      <div style="text-align:center"><div style="color:#6b8f6b;font-size:11px;margin-bottom:5px">${m.away}</div><input class="big-num" type="number" id="p-away" min="0" max="20" value="${predData.awayScore}" oninput="predData.awayScore=this.value"></div>
+      <div style="text-align:center"><div style="color:#6b8f6b;font-size:11px;margin-bottom:5px">${m.away}</div><input class="big-num" type="number" id="p-away" min="0" max="20" value="${predData.awayScore}" oninput="predData.awayScore=this.value;renderScorerSection()"></div>
     </div>
     <p style="font-weight:700;font-size:13px;margin-bottom:8px">⚽ Gol Atan Oyuncular <span style="color:#f59e0b;font-weight:400;font-size:11px">(her biri +7p)</span></p>
     <div id="scorer-chips" style="display:flex;flex-wrap:wrap;gap:6px;min-height:10px;margin-bottom:8px"></div>
     <div id="scorer-og-form" style="margin-bottom:6px"></div>
-    <button onclick="toggleOGForm()" style="background:transparent;color:#f59e0b;border:1px dashed #c77700;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:12px;margin-bottom:8px;display:block">+ Kendi Kalesine (OG)</button>
+    <button id="btn-add-og" onclick="toggleOGForm()" style="background:transparent;color:#f59e0b;border:1px dashed #c77700;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:12px;margin-bottom:8px;display:block">+ Kendi Kalesine (OG)</button>
     <input id="scorer-search-inp" class="inp" placeholder="Oyuncu adı ara ve tıkla ekle..." oninput="scorerListSearch=this.value;renderScorerSection()" style="margin-bottom:0">
     <div id="scorer-list" style="background:#0d1a0d;border:1px solid #1e3a1e;border-radius:0 0 10px 10px;max-height:220px;overflow-y:auto;margin-bottom:14px"></div>
     <div style="background:#0d1a2e;border-radius:12px;padding:12px;margin-bottom:14px">
@@ -925,14 +911,30 @@ function renderScorerSection(){
   const listDiv=document.getElementById("scorer-list");
   const ogDiv=document.getElementById("scorer-og-form");
   if(!chipsDiv||!predictMatch)return;
+  
+  const hS = parseInt(predData.homeScore)||0;
+  const aS = parseInt(predData.awayScore)||0;
+  const maxGoals = hS + aS;
+
+  if(predData.scorers.length > maxGoals){
+      predData.scorers = predData.scorers.slice(0, maxGoals);
+  }
+  
+  const canAdd = predData.scorers.length < maxGoals;
 
   chipsDiv.innerHTML=predData.scorers.filter(Boolean).map((s,i)=>{
     const display=s.replace(/^\[.*?\]\s*/,"").replace("⚽ Kendi Kalesine (OG) - ","OG: ").replace("⚽ ","");
     return `<span style="background:#1e3a1e;color:#86efac;border:1px solid #2a5a2a;border-radius:20px;padding:4px 10px;font-size:12px;display:inline-flex;align-items:center;gap:6px"><span>⚽ ${display}</span><button onmousedown="event.preventDefault();removePredScorer(${i})" style="background:none;border:none;color:#f87171;cursor:pointer;font-size:15px;padding:0;line-height:1">×</button></span>`;
   }).join("");
 
+  const ogBtn = document.getElementById("btn-add-og");
+  if(ogBtn){
+      if(canAdd) ogBtn.style.display="block";
+      else { ogBtn.style.display="none"; showOGForm=false; }
+  }
+
   if(ogDiv){
-    if(showOGForm){
+    if(showOGForm && canAdd){
       let h=`<div style="background:#1a2e1a;border:1px solid #2a5a2a;border-radius:8px;padding:10px">`;
       h+=`<div style="font-size:11px;color:#6b8f6b;margin-bottom:6px">Kendi kalesine atan oyuncunun takımı:</div>`;
       h+=`<div style="display:flex;gap:6px;margin-bottom:8px">`;
@@ -958,25 +960,44 @@ function renderScorerSection(){
     }
   }
 
+  const searchInp = document.getElementById("scorer-search-inp");
+  if(searchInp){
+      searchInp.disabled = !canAdd;
+      searchInp.placeholder = canAdd ? "Oyuncu adı ara ve tıkla ekle..." : "Maksimum golcü sayısına ulaştınız";
+  }
+
   if(listDiv){
-    const players=[...(SQUADS[predictMatch.home]||[]),...(SQUADS[predictMatch.away]||[])];
-    const filtered=scorerListSearch?players.filter(p=>p.toLowerCase().includes(scorerListSearch.toLowerCase())):players;
-    const loadingBanner=liveStatsLoading?`<div style="padding:6px 12px;font-size:11px;color:#6b8f6b;display:flex;align-items:center;gap:6px;border-bottom:1px solid #1e3a1e"><span class="spinner"></span>İstatistikler yükleniyor...</div>`:"";
-    listDiv.innerHTML=loadingBanner+filtered.map(p=>{
-      const name=p.replace(/^\[.*?\]\s*/,"").trim();
-      const pos=(p.match(/^\[.*?-\s*(\w+)\]/)||[])[1]||"";
-      const st=getStats(name);
-      const stHtml=st?`<span style="color:#6b8f6b;font-size:10px;margin-left:auto;padding-left:8px;white-space:nowrap">${st.c}M · ${st.g}⚽</span>`:`<span style="color:#334;font-size:10px;margin-left:auto;padding-left:8px">—</span>`;
-      return `<div class="ddi" style="display:flex;align-items:center" onmousedown="event.preventDefault();addPredScorer('${p.replace(/'/g,"\\'")}')"><span style="color:#4ade80;font-size:10px;min-width:24px">${pos}</span><span>${name}</span>${stHtml}</div>`;
-    }).join("")||(filtered.length===0?`<div class="ddi" style="color:#556;pointer-events:none">Oyuncu bulunamadı</div>`:"");
-    listDiv.style.display="block";
+    if(!canAdd){
+        listDiv.innerHTML=`<div class="ddi" style="color:#f59e0b;pointer-events:none">Skora göre eklenebilecek tüm golcüleri seçtiniz.</div>`;
+        listDiv.style.display="block";
+    } else {
+        const players=[...(SQUADS[predictMatch.home]||[]),...(SQUADS[predictMatch.away]||[])];
+        const filtered=scorerListSearch?players.filter(p=>p.toLowerCase().includes(scorerListSearch.toLowerCase())):players;
+        const loadingBanner=liveStatsLoading?`<div style="padding:6px 12px;font-size:11px;color:#6b8f6b;display:flex;align-items:center;gap:6px;border-bottom:1px solid #1e3a1e"><span class="spinner"></span>İstatistikler yükleniyor...</div>`:"";
+        listDiv.innerHTML=loadingBanner+filtered.map(p=>{
+          const name=p.replace(/^\[.*?\]\s*/,"").trim();
+          const pos=(p.match(/^\[.*?-\s*(\w+)\]/)||[])[1]||"";
+          const st=getStats(name);
+          const stHtml=st?`<span style="color:#6b8f6b;font-size:10px;margin-left:auto;padding-left:8px;white-space:nowrap">${st.c}M · ${st.g}⚽</span>`:`<span style="color:#334;font-size:10px;margin-left:auto;padding-left:8px">—</span>`;
+          return `<div class="ddi" style="display:flex;align-items:center" onmousedown="event.preventDefault();addPredScorer('${p.replace(/'/g,"\\'")}')"><span style="color:#4ade80;font-size:10px;min-width:24px">${pos}</span><span>${name}</span>${stHtml}</div>`;
+        }).join("")||(filtered.length===0?`<div class="ddi" style="color:#556;pointer-events:none">Oyuncu bulunamadı</div>`:"");
+        listDiv.style.display="block";
+    }
   }
 }
 
-function addPredScorer(p){predData.scorers.push(p);scorerListSearch="";const i=document.getElementById("scorer-search-inp");if(i)i.value="";renderScorerSection();}
+function addPredScorer(p){
+    const maxGoals = (parseInt(predData.homeScore)||0) + (parseInt(predData.awayScore)||0);
+    if(predData.scorers.length >= maxGoals) return;
+    predData.scorers.push(p);scorerListSearch="";const i=document.getElementById("scorer-search-inp");if(i)i.value="";renderScorerSection();
+}
 function removePredScorer(i){predData.scorers.splice(i,1);renderScorerSection();}
 function toggleOGForm(){showOGForm=!showOGForm;if(!showOGForm){ogFormTeam=null;ogFormSearch="";}renderScorerSection();}
-function addOGScorerPlayer(name,team){predData.scorers.push(`⚽ Kendi Kalesine (OG) - ${name} (${team})`);showOGForm=false;ogFormTeam=null;ogFormSearch="";renderScorerSection();}
+function addOGScorerPlayer(name,team){
+    const maxGoals = (parseInt(predData.homeScore)||0) + (parseInt(predData.awayScore)||0);
+    if(predData.scorers.length >= maxGoals) return;
+    predData.scorers.push(`⚽ Kendi Kalesine (OG) - ${name} (${team})`);showOGForm=false;ogFormTeam=null;ogFormSearch="";renderScorerSection();
+}
 
 async function savePred(){
   if(isClosed(predictMatch)){showToast("⏰ Süre doldu!");return;}
@@ -1145,15 +1166,15 @@ function renderAdminEditPage(){
     <p style="color:#6b8f6b;text-align:center;font-size:12px;margin-bottom:18px">${fmtTR(m.utc)} TR · Grup ${m.group} · ${m.venue}</p>
     
     <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:20px">
-      <div style="text-align:center"><div style="color:#6b8f6b;font-size:11px;margin-bottom:5px">${m.home}</div><input class="big-num" type="number" min="0" max="20" value="${adminEditData.homeScore}" oninput="adminEditData.homeScore=this.value" style="border-color:#f87171;color:#f87171"></div>
+      <div style="text-align:center"><div style="color:#6b8f6b;font-size:11px;margin-bottom:5px">${m.home}</div><input class="big-num" type="number" min="0" max="20" value="${adminEditData.homeScore}" oninput="adminEditData.homeScore=this.value;renderAdminScorerSection()" style="border-color:#f87171;color:#f87171"></div>
       <span style="font-size:26px;color:#2a4a2a;padding-top:18px">–</span>
-      <div style="text-align:center"><div style="color:#6b8f6b;font-size:11px;margin-bottom:5px">${m.away}</div><input class="big-num" type="number" min="0" max="20" value="${adminEditData.awayScore}" oninput="adminEditData.awayScore=this.value" style="border-color:#f87171;color:#f87171"></div>
+      <div style="text-align:center"><div style="color:#6b8f6b;font-size:11px;margin-bottom:5px">${m.away}</div><input class="big-num" type="number" min="0" max="20" value="${adminEditData.awayScore}" oninput="adminEditData.awayScore=this.value;renderAdminScorerSection()" style="border-color:#f87171;color:#f87171"></div>
     </div>
     
     <p style="font-weight:700;font-size:13px;margin-bottom:8px">⚽ Gol Atan Oyuncular <span style="color:#6b8f6b;font-weight:400;font-size:11px">(Eşleştirme için)</span></p>
     <div id="admin-scorer-chips" style="display:flex;flex-wrap:wrap;gap:6px;min-height:10px;margin-bottom:8px"></div>
     <div id="admin-scorer-og-form" style="margin-bottom:6px"></div>
-    <button onclick="toggleAdminOGForm()" style="background:transparent;color:#f87171;border:1px dashed #f87171;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:12px;margin-bottom:8px;display:block">+ Kendi Kalesine (OG)</button>
+    <button id="btn-admin-add-og" onclick="toggleAdminOGForm()" style="background:transparent;color:#f87171;border:1px dashed #f87171;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:12px;margin-bottom:8px;display:block">+ Kendi Kalesine (OG)</button>
     <input id="admin-scorer-search-inp" class="inp" placeholder="Oyuncu adı ara ve tıkla ekle..." oninput="adminScorerListSearch=this.value;renderAdminScorerSection()" style="margin-bottom:0">
     <div id="admin-scorer-list" style="background:#1a0a0a;border:1px solid #4a1a1a;border-radius:0 0 10px 10px;max-height:220px;overflow-y:auto;margin-bottom:14px"></div>
 
@@ -1168,50 +1189,86 @@ function renderAdminScorerSection(){
   const ogDiv=document.getElementById("admin-scorer-og-form");
   if(!chipsDiv||!adminEditMatch)return;
 
+  const hS = parseInt(adminEditData.homeScore)||0;
+  const aS = parseInt(adminEditData.awayScore)||0;
+  const maxGoals = hS + aS;
+
+  if(adminEditData.scorers.length > maxGoals){
+      adminEditData.scorers = adminEditData.scorers.slice(0, maxGoals);
+  }
+  
+  const canAdd = adminEditData.scorers.length < maxGoals;
+
   chipsDiv.innerHTML=adminEditData.scorers.map((s,i)=>
     `<span style="background:#2a1010;color:#f87171;border:1px solid #4a1a1a;border-radius:20px;padding:4px 10px;font-size:12px;display:flex;align-items:center;gap:6px">${s.startsWith("⚽ Kendi Kalesine")?"🟥 ":""}<span>${s.replace(/^\[.*?\]\s*/,"")}</span><span onmousedown="event.preventDefault();removeAdminScorer(${i})" style="cursor:pointer;color:#f87171;font-size:15px;line-height:1;margin-left:2px">×</span></span>`
   ).join("");
 
-  if(adminShowOGForm){
-    let h=`<div style="background:#1a0a0a;border:1px solid #f87171;border-radius:8px;padding:10px;margin-bottom:8px"><div style="font-size:11px;color:#f87171;margin-bottom:6px">Kendi kalesine atan oyuncunun takımı:</div><div style="display:flex;gap:6px;margin-bottom:8px">`;
-    [adminEditMatch.home,adminEditMatch.away].forEach(t=>{
-      const sel=adminOgFormTeam===t;
-      h+=`<button onmousedown="event.preventDefault();adminOgFormTeam='${t.replace(/'/g,"\\'")}';adminOgFormSearch='';renderAdminScorerSection()" style="flex:1;border-radius:8px;padding:7px;cursor:pointer;font-size:12px;font-weight:600;border:1px solid ${sel?"#f87171":"#3a1a1a"};background:${sel?"#3a1010":"#1a0a0a"};color:${sel?"#f87171":"#6b4b4b"}">${FLAG[t]||""} ${t}</button>`;
-    });
-    h+=`</div>`;
-    if(adminOgFormTeam){
-      h+=`<input class="inp" value="${adminOgFormSearch}" oninput="adminOgFormSearch=this.value;renderAdminScorerSection()" placeholder="${adminOgFormTeam} oyuncusu ara..." style="margin-bottom:4px;background:#1a0a0a">`;
-      const pool=(SQUADS[adminOgFormTeam]||[]).filter(p=>!adminOgFormSearch||p.toLowerCase().includes(adminOgFormSearch.toLowerCase()));
-      h+=`<div style="background:#1a0a0a;border:1px solid #f87171;border-radius:8px;max-height:150px;overflow-y:auto">`;
-      pool.forEach(p=>{
-        const n=p.replace(/^\[.*?\]\s*/,"").trim();
-        h+=`<div class="ddi" onmousedown="event.preventDefault();addAdminOGScorerPlayer('${n.replace(/'/g,"\\'")}','${adminOgFormTeam.replace(/'/g,"\\'")}')">⚽ ${n}</div>`;
+  const ogBtn = document.getElementById("btn-admin-add-og");
+  if(ogBtn){
+      if(canAdd) ogBtn.style.display="block";
+      else { ogBtn.style.display="none"; adminShowOGForm=false; }
+  }
+
+  if(ogDiv){
+    if(adminShowOGForm && canAdd){
+      let h=`<div style="background:#1a0a0a;border:1px solid #f87171;border-radius:8px;padding:10px;margin-bottom:8px"><div style="font-size:11px;color:#f87171;margin-bottom:6px">Kendi kalesine atan oyuncunun takımı:</div><div style="display:flex;gap:6px;margin-bottom:8px">`;
+      [adminEditMatch.home,adminEditMatch.away].forEach(t=>{
+        const sel=adminOgFormTeam===t;
+        h+=`<button onmousedown="event.preventDefault();adminOgFormTeam='${t.replace(/'/g,"\\'")}';adminOgFormSearch='';renderAdminScorerSection()" style="flex:1;border-radius:8px;padding:7px;cursor:pointer;font-size:12px;font-weight:600;border:1px solid ${sel?"#f87171":"#3a1a1a"};background:${sel?"#3a1010":"#1a0a0a"};color:${sel?"#f87171":"#6b4b4b"}">${FLAG[t]||""} ${t}</button>`;
       });
       h+=`</div>`;
+      if(adminOgFormTeam){
+        h+=`<input class="inp" value="${adminOgFormSearch}" oninput="adminOgFormSearch=this.value;renderAdminScorerSection()" placeholder="${adminOgFormTeam} oyuncusu ara..." style="margin-bottom:4px;background:#1a0a0a">`;
+        const pool=(SQUADS[adminOgFormTeam]||[]).filter(p=>!adminOgFormSearch||p.toLowerCase().includes(adminOgFormSearch.toLowerCase()));
+        h+=`<div style="background:#1a0a0a;border:1px solid #f87171;border-radius:8px;max-height:150px;overflow-y:auto">`;
+        pool.forEach(p=>{
+          const n=p.replace(/^\[.*?\]\s*/,"").trim();
+          h+=`<div class="ddi" onmousedown="event.preventDefault();addAdminOGScorerPlayer('${n.replace(/'/g,"\\'")}','${adminOgFormTeam.replace(/'/g,"\\'")}')">⚽ ${n}</div>`;
+        });
+        h+=`</div>`;
+      }
+      h+=`</div>`;
+      ogDiv.innerHTML=h;
+    } else {
+      ogDiv.innerHTML="";
     }
-    h+=`</div>`;
-    ogDiv.innerHTML=h;
-  } else {
-    ogDiv.innerHTML="";
+  }
+
+  const searchInp = document.getElementById("admin-scorer-search-inp");
+  if(searchInp){
+      searchInp.disabled = !canAdd;
+      searchInp.placeholder = canAdd ? "Oyuncu adı ara ve tıkla ekle..." : "Skor limitine ulaşıldı";
   }
 
   if(listDiv){
-    const players=[...(SQUADS[adminEditMatch.home]||[]),...(SQUADS[adminEditMatch.away]||[])];
-    const filtered=adminScorerListSearch?players.filter(p=>p.toLowerCase().includes(adminScorerListSearch.toLowerCase())):players;
-    listDiv.innerHTML=filtered.map(p=>{
-      const name=p.replace(/^\[.*?\]\s*/,"").trim();
-      const pos=(p.match(/^\[.*?-\s*(\w+)\]/)||[])[1]||"";
-      const st=getStats(name);
-      const stHtml=st?`<span style="color:#6b8f6b;font-size:10px;margin-left:auto;padding-left:8px;white-space:nowrap">${st.c}M · ${st.g}⚽</span>`:`<span style="color:#334;font-size:10px;margin-left:auto;padding-left:8px">—</span>`;
-      return `<div class="ddi" style="display:flex;align-items:center" onmousedown="event.preventDefault();addAdminScorerFromList('${p.replace(/'/g,"\\'")}')"><span style="color:#f87171;font-size:10px;min-width:24px">${pos}</span><span>${name}</span>${stHtml}</div>`;
-    }).join("")||(filtered.length===0?`<div class="ddi" style="color:#556;pointer-events:none">Oyuncu bulunamadı</div>`:"");
+    if(!canAdd){
+        listDiv.innerHTML=`<div class="ddi" style="color:#f59e0b;pointer-events:none">Skora göre eklenebilecek tüm golcüleri seçtiniz.</div>`;
+    } else {
+        const players=[...(SQUADS[adminEditMatch.home]||[]),...(SQUADS[adminEditMatch.away]||[])];
+        const filtered=adminScorerListSearch?players.filter(p=>p.toLowerCase().includes(adminScorerListSearch.toLowerCase())):players;
+        listDiv.innerHTML=filtered.map(p=>{
+          const name=p.replace(/^\[.*?\]\s*/,"").trim();
+          const pos=(p.match(/^\[.*?-\s*(\w+)\]/)||[])[1]||"";
+          const st=getStats(name);
+          const stHtml=st?`<span style="color:#6b8f6b;font-size:10px;margin-left:auto;padding-left:8px;white-space:nowrap">${st.c}M · ${st.g}⚽</span>`:`<span style="color:#334;font-size:10px;margin-left:auto;padding-left:8px">—</span>`;
+          return `<div class="ddi" style="display:flex;align-items:center" onmousedown="event.preventDefault();addAdminScorerFromList('${p.replace(/'/g,"\\'")}')"><span style="color:#f87171;font-size:10px;min-width:24px">${pos}</span><span>${name}</span>${stHtml}</div>`;
+        }).join("")||(filtered.length===0?`<div class="ddi" style="color:#556;pointer-events:none">Oyuncu bulunamadı</div>`:"");
+    }
   }
 }
 
-function addAdminScorerFromList(p){adminEditData.scorers.push(p);adminScorerListSearch="";const i=document.getElementById("admin-scorer-search-inp");if(i)i.value="";renderAdminScorerSection();}
+function addAdminScorerFromList(p){
+    const maxGoals = (parseInt(adminEditData.homeScore)||0) + (parseInt(adminEditData.awayScore)||0);
+    if(adminEditData.scorers.length >= maxGoals) return;
+    adminEditData.scorers.push(p);adminScorerListSearch="";const i=document.getElementById("admin-scorer-search-inp");if(i)i.value="";renderAdminScorerSection();
+}
 function removeAdminScorer(i){adminEditData.scorers.splice(i,1);renderAdminScorerSection();}
 function toggleAdminOGForm(){adminShowOGForm=!adminShowOGForm;if(!adminShowOGForm){adminOgFormTeam=null;adminOgFormSearch="";}renderAdminScorerSection();}
-function addAdminOGScorerPlayer(name,team){adminEditData.scorers.push(`⚽ Kendi Kalesine (OG) - ${name} (${team})`);adminShowOGForm=false;adminOgFormTeam=null;adminOgFormSearch="";renderAdminScorerSection();}
+function addAdminOGScorerPlayer(name,team){
+    const maxGoals = (parseInt(adminEditData.homeScore)||0) + (parseInt(adminEditData.awayScore)||0);
+    if(adminEditData.scorers.length >= maxGoals) return;
+    adminEditData.scorers.push(`⚽ Kendi Kalesine (OG) - ${name} (${team})`);adminShowOGForm=false;adminOgFormTeam=null;adminOgFormSearch="";renderAdminScorerSection();
+}
 
 async function saveAdminResultFinal(){
   if(adminEditData.homeScore===""||adminEditData.awayScore===""){showToast("⚠️ Skoru tam gir!");return;}
