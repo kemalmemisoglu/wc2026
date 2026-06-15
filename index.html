@@ -1315,23 +1315,10 @@ async function fetchScoresFromESPN(){
       const home=ESPN_MAP[hC.team?.displayName];
       const away=ESPN_MAP[aC.team?.displayName];
       if(!home||!away)return null;
-      const scorers = (comp.details || [])
-  .filter(d =>
-    d.scoringPlay === true ||
-    d.type?.id == 70 ||
-    d.type?.id == 71 ||
-    d.type?.id == 72 ||
-    [
-      "Goal",
-      "Gol",
-      "Own Goal",
-      "Own goal",
-      "Penalty Goal",
-      "Penalty"
-    ].includes(d.type?.text)
-  )
-  .map(d => d.athletesInvolved?.[0]?.displayName)
-  .filter(Boolean);
+      const scorers=(comp.details||[]).filter(d=>d.type?.text==="Goal"||d.type?.text==="Gol")
+        .map(d=>d.athletesInvolved?.[0]?.displayName).filter(Boolean);
+      return{home,away,homeScore:parseInt(hC.score)||0,awayScore:parseInt(aC.score)||0,scorers};
+    }).filter(Boolean);
   }catch{return[];}
 }
 
