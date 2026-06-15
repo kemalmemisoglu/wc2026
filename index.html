@@ -82,6 +82,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a1a0a;color:#e8f5e
 <body>
 <div class="toast" id="toast"></div>
 
+<!-- ═══ LOGIN PAGE ═══ -->
 <div id="pg-login" class="page active">
 <div class="center">
 <div class="card" style="max-width:400px;width:100%">
@@ -110,6 +111,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a1a0a;color:#e8f5e
 </div>
 </div>
 
+<!-- ═══ MAIN NAV ═══ -->
 <nav class="nav" id="main-nav" style="display:none">
   <span class="logo">⚽ WC 2026</span>
   <div style="display:flex;align-items:center;gap:6px">
@@ -124,9 +126,12 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a1a0a;color:#e8f5e
   <div><button class="nav-btn" onclick="doLogout()">Çıkış</button></div>
 </nav>
 
+<!-- ═══ APP SHELL ═══ -->
 <div class="app-layout" id="app-shell" style="display:none">
 
+  <!-- MAIN CONTENT -->
   <div style="flex:1;min-width:0">
+    <!-- MATCHES -->
     <div id="pg-matches" class="page active" style="padding:16px 12px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;flex-wrap:wrap;gap:8px">
         <div>
@@ -143,21 +148,25 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a1a0a;color:#e8f5e
       <div id="match-list"></div>
     </div>
 
+    <!-- PREDICT -->
     <div id="pg-predict" class="page" style="padding:16px 12px">
       <button onclick="showMain('matches')" style="background:transparent;color:#6b8f6b;border:none;cursor:pointer;font-size:13px;margin-bottom:12px;padding:0">← Geri</button>
       <div class="card" id="predict-card"></div>
     </div>
 
+    <!-- ADMIN EDIT -->
     <div id="pg-admin-edit" class="page" style="padding:16px 12px">
       <button onclick="showMain('admin')" style="background:transparent;color:#f87171;border:none;cursor:pointer;font-size:13px;margin-bottom:12px;padding:0">← İptal</button>
       <div class="card" id="admin-edit-card"></div>
     </div>
 
+    <!-- LEADERBOARD -->
     <div id="pg-lb" class="page" style="padding:16px 12px">
       <h2 style="margin:0 0 14px;font-size:20px;font-weight:800">🏆 Sıralama Tablosu</h2>
       <div id="lb-list"></div>
     </div>
 
+    <!-- ADMIN PANEL -->
     <div id="pg-admin" class="page" style="padding:16px 12px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
         <h2 style="margin:0;color:#f87171;font-size:17px">🔧 Admin – Sonuç Listesi</h2>
@@ -168,6 +177,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a1a0a;color:#e8f5e
     </div>
   </div>
 
+  <!-- SIDEBAR SCOREBOARD -->
   <aside class="sidebar" id="sidebar">
     <div class="sb-title">🏆 Sıralama <span id="sb-player-count" style="color:#6b8f6b;font-size:11px;font-weight:400"></span></div>
     <div id="sb-list"></div>
@@ -1315,8 +1325,22 @@ async function fetchScoresFromESPN(){
       const home=ESPN_MAP[hC.team?.displayName];
       const away=ESPN_MAP[aC.team?.displayName];
       if(!home||!away)return null;
-      const scorers=(comp.details||[]).filter(d=>d.type?.text==="Goal"||d.type?.text==="Gol")
-        .map(d=>d.athletesInvolved?.[0]?.displayName).filter(Boolean);
+      
+      let scorers = [];
+      (comp.details||[]).forEach(d => {
+        const txt = (d.type?.text || "").toLowerCase();
+        // scoringPlay true veya içeriğinde goal/gol geçiyorsa
+        if(d.scoringPlay || txt.includes("goal") || txt.includes("gol")){
+           const pName = d.athletesInvolved?.[0]?.displayName || "Bilinmiyor";
+           if(txt.includes("own")){
+             const teamName = d.team?.displayName || "";
+             scorers.push(`⚽ Kendi Kalesine (OG) - ${pName} (${teamName})`);
+           } else {
+             scorers.push(pName);
+           }
+        }
+      });
+
       return{home,away,homeScore:parseInt(hC.score)||0,awayScore:parseInt(aC.score)||0,scorers};
     }).filter(Boolean);
   }catch{return[];}
@@ -1356,7 +1380,8 @@ async function autoFetch(silent=false){
           messages:[{role:"user",content:`2026 FIFA WC bitmiş maç sonuçları: ${list}. JSON array: [{"home":"X","away":"Y","homeScore":1,"awayScore":0,"scorers":["Oyuncu"]}]. Bitmemişleri dahil etme. Bitmiş yoksa [].`}]})});
       const d=await r.json();
       const raw=d.content.map(b=>b.type==="text"?b.text:"").join("\n");
-      const clean=raw.replace(/```json\n?|```/g,"").trim();
+      const clean=raw.replace(/```json\n?|
+```/g,"").trim();
       const s=clean.indexOf("["),e=clean.lastIndexOf("]");
       if(s!==-1){
         JSON.parse(clean.slice(s,e+1)).forEach(res=>{
