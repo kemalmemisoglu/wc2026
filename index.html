@@ -1303,48 +1303,95 @@ const ESPN_MAP={"Mexico":"Meksika","South Africa":"Güney Afrika","South Korea":
   "Croatia":"Hırvatistan","Ghana":"Gana","Panama":"Panama"};
 
 async function fetchScoresFromESPN(){
-  const endpoints=[
-    "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard",
-    "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.worldq/scoreboard",
-    "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world.2026/scoreboard"
-  ];
-  let allEvents=[];
-  for(const url of endpoints){
-    try{
-      const r=await fetch(url);
-      if(!r.ok)continue;
+  // Scoreboard'dan biten macları al
+  let events=[];
+  try{
+    const r=await fetch("https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard");
+    if(r.ok){
       const data=await r.json();
-      (data.events||[]).forEach(ev=>{
-        if(!allEvents.some(e=>e.id===ev.id))allEvents.push(ev);
-      });
+      events=(data.events||[]).filter(ev=>ev.status?.type?.completed||ev.status?.type?.state==="post");
+    }
+  }catch{}
+
+  if(!events.length)return[];
+
+  // Her mac icin summary endpoint'inden golleri cek (cok daha guvenilir)
+  const results=await Promise.all(events.map(async ev=>{
+    const comp=ev.competitions?.[0];if(!comp)return null;
+    const hC=comp.competitors?.find(c=>c.homeAway==="home");
+    const aC=comp.competitors?.find(c=>c.homeAway==="away");
+    if(!hC||!aC)return null;
+    const home=ESPN_MAP[hC.team?.displayName]||ESPN_MAP[hC.team?.name]||ESPN_MAP[hC.team?.shortDisplayName];
+    const away=ESPN_MAP[aC.team?.displayName]||ESPN_MAP[aC.team?.name]||ESPN_MAP[aC.team?.shortDisplayName];
+    if(!home||!away)return null;
+
+    const homeScore=parseInt(hC.score)||0;
+    const awayScore=parseInt(aC.score)||0;
+    let scorers=[];
+
+    // Summary endpoint'inden golleri cek
+    try{
+      const sr=await fetch("https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/summary?event="+ev.id);
+      if(sr.ok){
+        const sd=await sr.json();
+        (sd.scoringPlays||[]).forEach(sp=>{
+          const txt=(sp.type?.text||sp.type?.id||"").toLowerCase();
+          const isOG=txt.includes("own")||txt.includes("kendi");
+          const pName=sp.athletesInvolved?.[0]?.displayName||sp.athlete?.displayName;
+          if(pName){
+            if(isOG){
+              const teamName=ESPN_MAP[sp.team?.displayName]||sp.team?.displayName||"";
+              scorers.push("OG_PLACEHOLDER:"+pName+":"+teamName);
+            } else {
+              scorers.push(pName);
+            }
+          }
+        });
+        if(!scorers.length){
+          (sd.keyPlays||sd.plays||[]).forEach(p=>{
+            const txt=(p.type?.text||p.type?.id||"").toLowerCase();
+            const isGoal=txt.includes("goal")||txt.includes("gol")||p.scoringPlay===true;
+            if(!isGoal)return;
+            const isOG=txt.includes("own");
+            const pName=p.athletesInvolved?.[0]?.displayName||p.athlete?.displayName;
+            if(pName){
+              if(isOG){
+                const teamName=ESPN_MAP[p.team?.displayName]||p.team?.displayName||"";
+                scorers.push("OG_PLACEHOLDER:"+pName+":"+teamName);
+              } else {
+                scorers.push(pName);
+              }
+            }
+          });
+        }
+      }
     }catch{}
-  }
-  return allEvents
-    .filter(ev=>ev.status?.type?.completed||ev.status?.type?.state==="post")
-    .map(ev=>{
-      const comp=ev.competitions?.[0];if(!comp)return null;
-      const hC=comp.competitors?.find(c=>c.homeAway==="home");
-      const aC=comp.competitors?.find(c=>c.homeAway==="away");
-      if(!hC||!aC)return null;
-      const home=ESPN_MAP[hC.team?.displayName]||ESPN_MAP[hC.team?.name]||ESPN_MAP[hC.team?.shortDisplayName];
-      const away=ESPN_MAP[aC.team?.displayName]||ESPN_MAP[aC.team?.name]||ESPN_MAP[aC.team?.shortDisplayName];
-      if(!home||!away)return null;
-      let scorers=[];
+
+    if(!scorers.length){
       (comp.details||[]).forEach(d=>{
         const txt=(d.type?.text||d.type?.id||"").toLowerCase();
-        const isGoal=txt.includes("goal")||txt.includes("gol")||txt==="penalty"||txt==="penaltygoal"||d.scoringPlay===true;
+        const isGoal=txt.includes("goal")||txt.includes("gol")||d.scoringPlay===true;
         if(!isGoal)return;
         const pName=d.athletesInvolved?.[0]?.displayName;
-        if(!pName)return;
-        if(txt.includes("own")||txt.includes("kendi")){
-          const teamName=ESPN_MAP[d.team?.displayName]||d.team?.displayName||"";
-          scorers.push(`⚽ Kendi Kalesine (OG) - ${pName} (${teamName})`);
-        } else {
-          scorers.push(pName);
+        if(pName){
+          if(txt.includes("own")){
+            const teamName=ESPN_MAP[d.team?.displayName]||d.team?.displayName||"";
+            scorers.push("OG_PLACEHOLDER:"+pName+":"+teamName);
+          } else {
+            scorers.push(pName);
+          }
         }
       });
-      return{home,away,homeScore:parseInt(hC.score)||0,awayScore:parseInt(aC.score)||0,scorers};
-    }).filter(Boolean);
+    }
+
+    // OG placeholder'lari gercek formata cevir
+    scorers=scorers.map(s=>s.startsWith("OG_PLACEHOLDER:")?
+      (parts=>"\u26bd Kendi Kalesine (OG) - "+parts[1]+" ("+parts[2]+")")(s.split(":")): s);
+
+    return{home,away,homeScore,awayScore,scorers};
+  }));
+
+  return results.filter(Boolean);
 }
 
 // ════════════════════════════════════════════════
