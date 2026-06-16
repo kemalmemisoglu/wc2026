@@ -1303,23 +1303,48 @@ const ESPN_MAP={"Mexico":"Meksika","South Africa":"Güney Afrika","South Korea":
   "Croatia":"Hırvatistan","Ghana":"Gana","Panama":"Panama"};
 
 async function fetchScoresFromESPN(){
-  try{
-    const r=await fetch("https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard");
-    if(!r.ok)return[];
-    const data=await r.json();
-    return(data.events||[]).filter(ev=>ev.status?.type?.completed).map(ev=>{
+  const endpoints=[
+    "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard",
+    "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.worldq/scoreboard",
+    "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world.2026/scoreboard"
+  ];
+  let allEvents=[];
+  for(const url of endpoints){
+    try{
+      const r=await fetch(url);
+      if(!r.ok)continue;
+      const data=await r.json();
+      (data.events||[]).forEach(ev=>{
+        if(!allEvents.some(e=>e.id===ev.id))allEvents.push(ev);
+      });
+    }catch{}
+  }
+  return allEvents
+    .filter(ev=>ev.status?.type?.completed||ev.status?.type?.state==="post")
+    .map(ev=>{
       const comp=ev.competitions?.[0];if(!comp)return null;
       const hC=comp.competitors?.find(c=>c.homeAway==="home");
       const aC=comp.competitors?.find(c=>c.homeAway==="away");
       if(!hC||!aC)return null;
-      const home=ESPN_MAP[hC.team?.displayName];
-      const away=ESPN_MAP[aC.team?.displayName];
+      const home=ESPN_MAP[hC.team?.displayName]||ESPN_MAP[hC.team?.name]||ESPN_MAP[hC.team?.shortDisplayName];
+      const away=ESPN_MAP[aC.team?.displayName]||ESPN_MAP[aC.team?.name]||ESPN_MAP[aC.team?.shortDisplayName];
       if(!home||!away)return null;
-      const scorers=(comp.details||[]).filter(d=>d.type?.text==="Goal"||d.type?.text==="Gol")
-        .map(d=>d.athletesInvolved?.[0]?.displayName).filter(Boolean);
+      let scorers=[];
+      (comp.details||[]).forEach(d=>{
+        const txt=(d.type?.text||d.type?.id||"").toLowerCase();
+        const isGoal=txt.includes("goal")||txt.includes("gol")||txt==="penalty"||txt==="penaltygoal"||d.scoringPlay===true;
+        if(!isGoal)return;
+        const pName=d.athletesInvolved?.[0]?.displayName;
+        if(!pName)return;
+        if(txt.includes("own")||txt.includes("kendi")){
+          const teamName=ESPN_MAP[d.team?.displayName]||d.team?.displayName||"";
+          scorers.push(`⚽ Kendi Kalesine (OG) - ${pName} (${teamName})`);
+        } else {
+          scorers.push(pName);
+        }
+      });
       return{home,away,homeScore:parseInt(hC.score)||0,awayScore:parseInt(aC.score)||0,scorers};
     }).filter(Boolean);
-  }catch{return[];}
 }
 
 // ════════════════════════════════════════════════
@@ -1336,7 +1361,11 @@ async function autoFetch(silent=false){
   try{
     const espn=await fetchScoresFromESPN();
     espn.forEach(res=>{
-      const idx=matches.findIndex(m=>m.home===res.home&&m.away===res.away&&isClosed(m)&&!isFinished(m));
+      let idx=matches.findIndex(m=>m.home===res.home&&m.away===res.away&&isClosed(m)&&!isFinished(m));
+      if(idx===-1){
+        const rH=normalizeStr(res.home),rA=normalizeStr(res.away);
+        idx=matches.findIndex(m=>normalizeStr(m.home)===rH&&normalizeStr(m.away)===rA&&isClosed(m)&&!isFinished(m));
+      }
       if(idx!==-1){matches[idx]={...matches[idx],result:res};updated++;}
     });
     if(updated>0){
