@@ -1303,23 +1303,63 @@ const ESPN_MAP={"Mexico":"Meksika","South Africa":"Güney Afrika","South Korea":
   "Croatia":"Hırvatistan","Ghana":"Gana","Panama":"Panama"};
 
 async function fetchScoresFromESPN(){
-  try{
-    const r=await fetch("https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard");
-    if(!r.ok)return[];
-    const data=await r.json();
-    return(data.events||[]).filter(ev=>ev.status?.type?.completed).map(ev=>{
-      const comp=ev.competitions?.[0];if(!comp)return null;
-      const hC=comp.competitors?.find(c=>c.homeAway==="home");
-      const aC=comp.competitors?.find(c=>c.homeAway==="away");
-      if(!hC||!aC)return null;
-      const home=ESPN_MAP[hC.team?.displayName];
-      const away=ESPN_MAP[aC.team?.displayName];
-      if(!home||!away)return null;
-      const scorers=(comp.details||[]).filter(d=>d.type?.text==="Goal"||d.type?.text==="Gol")
-        .map(d=>d.athletesInvolved?.[0]?.displayName).filter(Boolean);
-      return{home,away,homeScore:parseInt(hC.score)||0,awayScore:parseInt(aC.score)||0,scorers};
-    }).filter(Boolean);
-  }catch{return[];}
+  // Sonuç beklenen (kilitli ama bitmemiş) maçların tarihlerini topla
+  const todo = matches.filter(m=>isClosed(m)&&!isFinished(m));
+  if(!todo.length) return [];
+
+  const dayKeys = new Set();
+  todo.forEach(m=>{
+    const base = new Date(m.utc);
+    // UTC gece yarısını geçen maçlar için bir gün öncesi/sonrasını da ekle
+    [-1,0,1].forEach(off=>{
+      const dt = new Date(base.getTime()+off*86400000);
+      dayKeys.add(dt.toISOString().slice(0,10).replace(/-/g,""));
+    });
+  });
+  const sorted=[...dayKeys].sort();
+
+  // Ardışık günleri tek "dates=YYYYMMDD-YYYYMMDD" aralığına sıkıştır (gereksiz istek atma)
+  const ranges=[];
+  let start=sorted[0],prev=sorted[0];
+  const toDate=k=>new Date(k.slice(0,4)+"-"+k.slice(4,6)+"-"+k.slice(6,8));
+  for(let i=1;i<sorted.length;i++){
+    const cur=sorted[i];
+    if((toDate(cur)-toDate(prev))===86400000){prev=cur;continue;}
+    ranges.push([start,prev]);start=cur;prev=cur;
+  }
+  ranges.push([start,prev]);
+
+  let allEvents=[];
+  for(const [s,e] of ranges){
+    try{
+      const qs=s===e?`dates=${s}`:`dates=${s}-${e}`;
+      const r=await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?${qs}`);
+      if(r.ok){
+        const data=await r.json();
+        if(Array.isArray(data.events))allEvents.push(...data.events);
+      }
+    }catch{}
+  }
+  // id'ye göre tekrarları temizle
+  const seen=new Set();
+  allEvents=allEvents.filter(ev=>{if(seen.has(ev.id))return false;seen.add(ev.id);return true;});
+
+  return allEvents.filter(ev=>ev.status?.type?.completed).map(ev=>{
+    const comp=ev.competitions?.[0];if(!comp)return null;
+    const hC=comp.competitors?.find(c=>c.homeAway==="home");
+    const aC=comp.competitors?.find(c=>c.homeAway==="away");
+    if(!hC||!aC)return null;
+    const home=ESPN_MAP[hC.team?.displayName];
+    const away=ESPN_MAP[aC.team?.displayName];
+    if(!home||!away)return null;
+    // Gol tipi etiketleri genişletildi: "Goal", "Own Goal", "Penalty - Scored" vb. hepsini yakala
+    const scorers=(comp.details||[]).filter(d=>{
+      const t=(d.type?.text||"").toLowerCase();
+      return (t.includes("goal")&&!t.includes("missed")&&!t.includes("saved")&&!t.includes("disallowed"))
+        || t.includes("penalty - scored");
+    }).map(d=>d.athletesInvolved?.[0]?.displayName).filter(Boolean);
+    return{home,away,homeScore:parseInt(hC.score)||0,awayScore:parseInt(aC.score)||0,scorers,utc:ev.date};
+  }).filter(Boolean);
 }
 
 // ════════════════════════════════════════════════
@@ -1336,8 +1376,22 @@ async function autoFetch(silent=false){
   try{
     const espn=await fetchScoresFromESPN();
     espn.forEach(res=>{
-      const idx=matches.findIndex(m=>m.home===res.home&&m.away===res.away&&isClosed(m)&&!isFinished(m));
-      if(idx!==-1){matches[idx]={...matches[idx],result:res};updated++;}
+      const idx=matches.findIndex(m=>{
+        if(isFinished(m))return false;
+        const direct=m.home===res.home&&m.away===res.away;
+        const swapped=m.home===res.away&&m.away===res.home;
+        if(!direct&&!swapped)return false;
+        const diffH=Math.abs(new Date(m.utc)-new Date(res.utc))/3600000;
+        return diffH<36;
+      });
+      if(idx!==-1){
+        const m=matches[idx];
+        const swapped=m.home===res.away;
+        const result=swapped
+          ?{homeScore:res.awayScore,awayScore:res.homeScore,scorers:res.scorers}
+          :{homeScore:res.homeScore,awayScore:res.awayScore,scorers:res.scorers};
+        matches[idx]={...m,result};updated++;
+      }
     });
     if(updated>0){
       await persistMatches();await persistUsers();
